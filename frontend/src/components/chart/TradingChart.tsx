@@ -162,6 +162,16 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     candlestickSeriesRef.current.setMarkers(markers);
   }, [signalData, candles]);
 
+  const [chartMode, setChartMode] = useState<'LIGHTWEIGHT' | 'TRADINGVIEW'>('LIGHTWEIGHT');
+
+  const getTradingViewSymbol = (sym: string) => {
+    if (sym.includes('NIFTY 50') || sym.includes('NIFTY')) return 'NSE:NIFTY';
+    if (sym.includes('BANKNIFTY')) return 'NSE:BANKNIFTY';
+    if (sym.includes('FINNIFTY')) return 'NSE:FINNIFTY';
+    if (sym.includes('SENSEX')) return 'BSE:SENSEX';
+    return `NSE:${sym.replace('.NS', '')}`;
+  };
+
   return (
     <div className="relative w-full h-full flex flex-col bg-slate-950">
       {/* Chart Header Bar */}
@@ -172,7 +182,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
           {/* Quick Price Overlay */}
           {candles && candles.length > 0 && (
-            <div className="flex items-center space-x-2 font-mono text-[11px]">
+            <div className="hidden sm:flex items-center space-x-2 font-mono text-[11px]">
               <span className="text-slate-400">O: <span className="text-slate-200">{candles[candles.length - 1].open}</span></span>
               <span className="text-slate-400">H: <span className="text-emerald-400">{candles[candles.length - 1].high}</span></span>
               <span className="text-slate-400">L: <span className="text-red-400">{candles[candles.length - 1].low}</span></span>
@@ -181,45 +191,51 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           )}
         </div>
 
-        {/* Indicator Toggles */}
+        {/* Chart Engine Switcher & Indicator Toggles */}
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setShowVWAP(!showVWAP)}
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-              showVWAP ? 'bg-amber-950/80 text-amber-400 border-amber-500/50' : 'bg-slate-900 text-slate-400 border-slate-800'
-            }`}
+            onClick={() => setChartMode(chartMode === 'LIGHTWEIGHT' ? 'TRADINGVIEW' : 'LIGHTWEIGHT')}
+            className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-600 hover:bg-blue-500 text-white shadow transition flex items-center space-x-1"
           >
-            VWAP
+            <Layers className="w-3 h-3" />
+            <span>{chartMode === 'LIGHTWEIGHT' ? 'SWITCH TO TRADINGVIEW LIVE' : 'SWITCH TO AI CHART'}</span>
           </button>
-          <button
-            onClick={() => setShowEMA20(!showEMA20)}
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-              showEMA20 ? 'bg-blue-950/80 text-blue-400 border-blue-500/50' : 'bg-slate-900 text-slate-400 border-slate-800'
-            }`}
-          >
-            EMA 20
-          </button>
-          <button
-            onClick={() => setShowEMA50(!showEMA50)}
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-              showEMA50 ? 'bg-purple-950/80 text-purple-400 border-purple-500/50' : 'bg-slate-900 text-slate-400 border-slate-800'
-            }`}
-          >
-            EMA 50
-          </button>
-          <button
-            onClick={() => setShowSRLevels(!showSRLevels)}
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-              showSRLevels ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/50' : 'bg-slate-900 text-slate-400 border-slate-800'
-            }`}
-          >
-            S/R LEVELS
-          </button>
+
+          {chartMode === 'LIGHTWEIGHT' && (
+            <>
+              <button
+                onClick={() => setShowVWAP(!showVWAP)}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
+                  showVWAP ? 'bg-amber-950/80 text-amber-400 border-amber-500/50' : 'bg-slate-900 text-slate-400 border-slate-800'
+                }`}
+              >
+                VWAP
+              </button>
+              <button
+                onClick={() => setShowEMA20(!showEMA20)}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
+                  showEMA20 ? 'bg-blue-950/80 text-blue-400 border-blue-500/50' : 'bg-slate-900 text-slate-400 border-slate-800'
+                }`}
+              >
+                EMA 20
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Main Lightweight Charts Canvas */}
-      <div ref={chartContainerRef} className="w-full flex-1" />
+      {/* Main Chart Area */}
+      {chartMode === 'LIGHTWEIGHT' ? (
+        <div ref={chartContainerRef} className="w-full flex-1" />
+      ) : (
+        <div className="w-full flex-1 relative bg-slate-950">
+          <iframe
+            src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${getTradingViewSymbol(symbol)}&interval=5&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=090D16&studies=VWAP%40tv-basicstudies%2CRSI%40tv-basicstudies&theme=dark&style=1&timezone=Asia%2FKolkata`}
+            className="w-full h-full border-0"
+            allowFullScreen
+          />
+        </div>
+      )}
     </div>
   );
 };
