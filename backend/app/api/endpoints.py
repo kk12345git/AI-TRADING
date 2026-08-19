@@ -11,6 +11,7 @@ from app.models.schemas import (
     FullSignalPayload, StrategyRuleConfig, ReplayState, BacktestRequest, BacktestResult, JournalEntry
 )
 from app.providers.mock_provider import MockMarketDataProvider
+from app.providers.live_provider import LiveNSEMarketDataProvider
 from app.providers.zerodha_provider import ZerodhaKiteProvider
 from app.providers.dhan_provider import DhanHQProvider
 from app.providers.fyers_provider import FyersProvider
@@ -24,14 +25,15 @@ router = APIRouter()
 
 # Multi-broker Provider Manager
 AVAILABLE_BROKERS = {
+    "live": LiveNSEMarketDataProvider(),
     "mock": MockMarketDataProvider(),
     "zerodha": ZerodhaKiteProvider(),
     "dhan": DhanHQProvider(),
     "fyers": FyersProvider(),
     "angelone": AngelOneProvider()
 }
-active_broker_key = "mock"
-provider = AVAILABLE_BROKERS["mock"]
+active_broker_key = "live"
+provider = AVAILABLE_BROKERS["live"]
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 

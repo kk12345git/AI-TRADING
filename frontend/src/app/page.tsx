@@ -8,6 +8,7 @@ import { OptionChainTable } from '@/components/options/OptionChainTable';
 import { ReplayBar } from '@/components/replay/ReplayBar';
 import { BacktestPanel } from '@/components/backtest/BacktestPanel';
 import { TradeJournalPanel } from '@/components/journal/TradeJournalPanel';
+import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { api } from '@/services/api';
 import { Candle, FullSignalPayload, OptionChainData, ReplayState } from '@/types';
 
@@ -46,34 +47,9 @@ export default function Home() {
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(refreshData, 2000);
+    const interval = setInterval(refreshData, 3000);
     return () => clearInterval(interval);
   }, [symbol, exchange, timeframe]);
-
-  // Handle WebSockets Tick Stream
-  useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000/ws/live';
-    const socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-      console.log('Connected to MyTrade AI Live Tick Feed');
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'TICK_UPDATE' && msg.symbol === symbol) {
-          setSignalData(msg.signal);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, [symbol]);
 
   const handleSelectInstrument = (newSym: string, newEx: string) => {
     setSymbol(newSym);
@@ -126,7 +102,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden pb-14 md:pb-0">
       {/* Top Header Navigation */}
       <Header
         currentSymbol={symbol}
@@ -144,19 +120,31 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left / Center Main Area */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          {/* Main Interactive Chart */}
-          <div className="flex-1 relative">
-            <TradingChart
-              symbol={symbol}
-              candles={candles}
-              signalData={signalData}
-              timeframe={timeframe}
-            />
-          </div>
+          {/* Main Interactive Chart (Visible if activeTab is CHART or REPLAY or desktop default) */}
+          {(activeTab === 'CHART' || activeTab === 'REPLAY' || activeTab === 'SIGNALS') && (
+            <div className={`flex-1 relative ${activeTab === 'SIGNALS' ? 'hidden md:block' : 'block'}`}>
+              <TradingChart
+                symbol={symbol}
+                candles={candles}
+                signalData={signalData}
+                timeframe={timeframe}
+              />
+            </div>
+          )}
+
+          {/* Mobile Signals Tab View */}
+          {activeTab === 'SIGNALS' && (
+            <div className="md:hidden flex-1 overflow-y-auto bg-slate-950">
+              <MyAiIndicatorSidebar
+                signalData={signalData}
+                onLogTrade={handleLogTrade}
+              />
+            </div>
+          )}
 
           {/* Bottom Dock Panel (Option Chain / Replay / Backtest / Journal) */}
           {activeTab === 'OPTION CHAIN' && (
-            <div className="h-[340px] shrink-0">
+            <div className="flex-1 md:h-[340px] md:shrink-0 overflow-y-auto">
               <OptionChainTable
                 optionData={optionData}
                 onSelectExpiry={(exp) => {
@@ -169,7 +157,7 @@ export default function Home() {
           )}
 
           {activeTab === 'REPLAY' && (
-            <div className="h-[260px] shrink-0">
+            <div className="h-[220px] md:h-[260px] shrink-0">
               <ReplayBar
                 symbol={symbol}
                 timeframe={timeframe}
@@ -181,7 +169,7 @@ export default function Home() {
           )}
 
           {activeTab === 'BACKTEST' && (
-            <div className="h-[340px] shrink-0">
+            <div className="flex-1 md:h-[340px] md:shrink-0 overflow-y-auto">
               <BacktestPanel
                 symbol={symbol}
                 exchange={exchange}
@@ -191,18 +179,27 @@ export default function Home() {
           )}
 
           {activeTab === 'JOURNAL' && (
-            <div className="h-[320px] shrink-0">
+            <div className="flex-1 md:h-[320px] md:shrink-0 overflow-y-auto">
               <TradeJournalPanel />
             </div>
           )}
         </div>
 
-        {/* Right Sidebar: MY AI INDICATOR */}
-        <MyAiIndicatorSidebar
-          signalData={signalData}
-          onLogTrade={handleLogTrade}
-        />
+        {/* Desktop Right Sidebar: MY AI INDICATOR */}
+        <div className="hidden md:block">
+          <MyAiIndicatorSidebar
+            signalData={signalData}
+            onLogTrade={handleLogTrade}
+          />
+        </div>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
     </div>
   );
 }
+
