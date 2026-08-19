@@ -8,6 +8,8 @@ import { OptionChainTable } from '@/components/options/OptionChainTable';
 import { ReplayBar } from '@/components/replay/ReplayBar';
 import { BacktestPanel } from '@/components/backtest/BacktestPanel';
 import { TradeJournalPanel } from '@/components/journal/TradeJournalPanel';
+import { WatchlistPanel } from '@/components/watchlist/WatchlistPanel';
+import { ScreenerPanel } from '@/components/screener/ScreenerPanel';
 import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { api } from '@/services/api';
 import { Candle, FullSignalPayload, OptionChainData, ReplayState } from '@/types';
@@ -54,6 +56,7 @@ export default function Home() {
   const handleSelectInstrument = (newSym: string, newEx: string) => {
     setSymbol(newSym);
     setExchange(newEx);
+    setActiveTab('CHART');
   };
 
   const handleLogTrade = async () => {
@@ -120,14 +123,33 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left / Center Main Area */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          {/* Main Interactive Chart (Visible if activeTab is CHART or REPLAY or desktop default) */}
-          {(activeTab === 'CHART' || activeTab === 'REPLAY' || activeTab === 'SIGNALS') && (
-            <div className={`flex-1 relative ${activeTab === 'SIGNALS' ? 'hidden md:block' : 'block'}`}>
+          {/* Main Interactive Chart (Visible if activeTab is CHART or REPLAY or default) */}
+          {(activeTab === 'CHART' || activeTab === 'REPLAY') && (
+            <div className="flex-1 relative">
               <TradingChart
                 symbol={symbol}
                 candles={candles}
                 signalData={signalData}
                 timeframe={timeframe}
+              />
+            </div>
+          )}
+
+          {/* Watchlist View */}
+          {activeTab === 'WATCHLIST' && (
+            <div className="flex-1 overflow-hidden">
+              <WatchlistPanel
+                activeSymbol={symbol}
+                onSelectSymbol={handleSelectInstrument}
+              />
+            </div>
+          )}
+
+          {/* Technical Screener View */}
+          {activeTab === 'SCREENER' && (
+            <div className="flex-1 overflow-hidden">
+              <ScreenerPanel
+                onSelectSymbol={handleSelectInstrument}
               />
             </div>
           )}
@@ -202,4 +224,5 @@ export default function Home() {
     </div>
   );
 }
+
 

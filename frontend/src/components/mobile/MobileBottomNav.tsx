@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, Cpu, Layers, TestTube, BookOpen } from 'lucide-react';
+import { BarChart2, Cpu, Layers, Star, SlidersHorizontal, BookOpen } from 'lucide-react';
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -12,9 +12,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   const navItems = [
     { key: 'CHART', label: 'Chart', icon: BarChart2 },
+    { key: 'WATCHLIST', label: 'Watchlist', icon: Star },
     { key: 'SIGNALS', label: 'AI Signals', icon: Cpu },
+    { key: 'SCREENER', label: 'Screener', icon: SlidersHorizontal },
     { key: 'OPTION CHAIN', label: 'Options', icon: Layers },
-    { key: 'BACKTEST', label: 'Backtest', icon: TestTube },
     { key: 'JOURNAL', label: 'Journal', icon: BookOpen },
   ];
 

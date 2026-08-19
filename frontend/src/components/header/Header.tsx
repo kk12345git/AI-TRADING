@@ -142,11 +142,11 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center space-x-3">
         {/* Navigation Tabs */}
         <div className="flex items-center bg-slate-950 p-1 rounded-md border border-slate-800 space-x-1">
-          {['CHART', 'OPTION CHAIN', 'REPLAY', 'BACKTEST', 'JOURNAL'].map((tab) => (
+          {['CHART', 'WATCHLIST', 'SCREENER', 'OPTION CHAIN', 'REPLAY', 'BACKTEST', 'JOURNAL'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-2.5 py-1 rounded font-semibold text-[11px] transition ${
+              className={`px-2 py-1 rounded font-semibold text-[10px] md:text-[11px] transition ${
                 activeTab === tab
                   ? 'bg-blue-600 text-white shadow'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
