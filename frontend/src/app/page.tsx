@@ -59,6 +59,15 @@ export default function Home() {
     setActiveTab('CHART');
   };
 
+  const handleSelectExchange = (newEx: string) => {
+    setExchange(newEx);
+    if (newEx === 'BSE') {
+      setSymbol('SENSEX');
+    } else {
+      setSymbol('NIFTY 50');
+    }
+  };
+
   const handleLogTrade = async () => {
     if (!signalData) return;
     try {
@@ -112,6 +121,7 @@ export default function Home() {
         currentExchange={exchange}
         currentTimeframe={timeframe}
         onSelectInstrument={handleSelectInstrument}
+        onSelectExchange={handleSelectExchange}
         onSelectTimeframe={setTimeframe}
         marketStatus={marketStatus}
         dataHealth={dataHealth}

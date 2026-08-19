@@ -8,6 +8,7 @@ interface HeaderProps {
   currentExchange: string;
   currentTimeframe: string;
   onSelectInstrument: (symbol: string, exchange: string) => void;
+  onSelectExchange: (exchange: string) => void;
   onSelectTimeframe: (tf: string) => void;
   marketStatus: string;
   dataHealth: string;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentExchange,
   currentTimeframe,
   onSelectInstrument,
+  onSelectExchange,
   onSelectTimeframe,
   marketStatus,
   dataHealth,
@@ -37,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
       setIsSearching(true);
       const timer = setTimeout(async () => {
         try {
-          const res = await api.searchInstruments(searchQuery);
+          const res = await api.searchInstruments(searchQuery, currentExchange);
           setSearchResults(res);
         } catch (e) {
           console.error(e);
@@ -49,33 +51,46 @@ export const Header: React.FC<HeaderProps> = ({
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery]);
+  }, [searchQuery, currentExchange]);
 
   return (
-    <header className="h-14 bg-slate-900/90 border-b border-slate-800 px-4 flex items-center justify-between text-xs select-none sticky top-0 z-50 backdrop-blur">
+    <header className="h-12 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between text-xs select-none sticky top-0 z-50 backdrop-blur">
       {/* Left: Branding & Symbol Search */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-500/20">
-            <Zap className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-500 to-blue-600 flex items-center justify-center font-bold text-white shadow">
+            <Zap className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <div className="font-extrabold text-sm tracking-wide text-slate-100 flex items-center space-x-1.5">
-              <span>MyTrade</span>
-              <span className="text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded text-[10px] border border-emerald-500/30">AI INDICATOR</span>
+          <div className="hidden sm:block">
+            <div className="font-extrabold text-xs tracking-wide text-slate-100 flex items-center space-x-1">
+              <span>MyTrade AI</span>
+              <span className="text-emerald-400 bg-emerald-950 px-1 py-0.2 rounded text-[9px] border border-emerald-500/30">NSE/BSE</span>
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">NSE & BSE STRATEGY ENGINE</div>
           </div>
         </div>
 
-        {/* Exchange Tag */}
-        <div className="flex items-center bg-slate-950 rounded-md p-1 border border-slate-800">
-          <span className={`px-2 py-0.5 rounded font-bold transition ${currentExchange === 'NSE' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
+        {/* Interactive NSE / BSE Exchange Shifter */}
+        <div className="flex items-center bg-slate-950 rounded-md p-0.5 border border-slate-800">
+          <button
+            onClick={() => onSelectExchange('NSE')}
+            className={`px-2.5 py-0.5 rounded font-black text-[11px] transition ${
+              currentExchange === 'NSE'
+                ? 'bg-blue-600 text-white shadow shadow-blue-500/40 ring-1 ring-blue-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
             NSE
-          </span>
-          <span className={`px-2 py-0.5 rounded font-bold transition ${currentExchange === 'BSE' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>
+          </button>
+          <button
+            onClick={() => onSelectExchange('BSE')}
+            className={`px-2.5 py-0.5 rounded font-black text-[11px] transition ${
+              currentExchange === 'BSE'
+                ? 'bg-purple-600 text-white shadow shadow-purple-500/40 ring-1 ring-purple-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
             BSE
-          </span>
+          </button>
         </div>
 
         {/* Symbol Search Bar */}
