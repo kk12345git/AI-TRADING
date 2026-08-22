@@ -56,6 +56,10 @@ def delete_trade(trade_id: str):
         raise HTTPException(status_code=404, detail="Trade not found")
     return {"success": True, "message": "Trade deleted successfully"}
 
+@app.post("/api/trades/clear", response_model=List[Trade])
+def clear_all_trades():
+    return db.clear_all_trades()
+
 @app.post("/api/trades/reset-demo", response_model=List[Trade])
 def reset_demo_trades():
     return db.reset_demo_data()
