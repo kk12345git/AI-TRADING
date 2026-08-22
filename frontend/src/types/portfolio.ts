@@ -1,4 +1,5 @@
 export type AssetClass = "Stocks" | "Options" | "Crypto" | "Forex" | "Futures";
+export type TradingStyle = "Day Trader" | "Scalper" | "Swing Trader" | "Position Trader";
 export type ActionType = "BUY" | "SELL";
 export type TradeStatus = "WIN" | "LOSS" | "BREAKEVEN";
 export type TimeframeFilter = "daily" | "weekly" | "monthly" | "yearly" | "all";
@@ -10,7 +11,35 @@ export interface UserProfile {
   email: string;
   avatar: string;
   base_currency: CurrencySymbol;
+  trading_style: TradingStyle;
+  primary_market: AssetClass;
+  account_capital: number;
+  risk_per_trade_pct: number;
+  trading_goals: string;
   created_at: string;
+}
+
+export interface UserOnboardInput {
+  email: string;
+  name: string;
+  avatar: string;
+  base_currency: CurrencySymbol;
+  trading_style: TradingStyle;
+  primary_market: AssetClass;
+  account_capital: number;
+  risk_per_trade_pct: number;
+  trading_goals: string;
+}
+
+export interface UserUpdateInput {
+  name?: string;
+  avatar?: string;
+  base_currency?: CurrencySymbol;
+  trading_style?: TradingStyle;
+  primary_market?: AssetClass;
+  account_capital?: number;
+  risk_per_trade_pct?: number;
+  trading_goals?: string;
 }
 
 export interface Trade {

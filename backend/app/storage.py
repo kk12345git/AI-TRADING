@@ -2,38 +2,11 @@ import json
 import os
 import uuid
 from datetime import datetime
-from typing import List, Optional, Dict
-from app.models.trade import Trade, TradeCreate, TradeUpdate, UserProfile, UserLoginRequest
+from typing import List, Optional
+from app.models.trade import Trade, TradeCreate, TradeUpdate, UserProfile, UserOnboardRequest, UserUpdateRequest
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "trades_db.json")
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users_db.json")
-
-DEFAULT_USERS = [
-    {
-        "id": "trader_1",
-        "name": "Alex Morgan",
-        "email": "alex@tradematrix.ai",
-        "avatar": "📈",
-        "base_currency": "$",
-        "created_at": "2026-08-01 10:00:00"
-    },
-    {
-        "id": "trader_2",
-        "name": "Rahul Sharma",
-        "email": "rahul@tradematrix.ai",
-        "avatar": "⚡",
-        "base_currency": "₹",
-        "created_at": "2026-08-05 11:30:00"
-    },
-    {
-        "id": "trader_3",
-        "name": "Sarah Jenkins",
-        "email": "sarah@tradematrix.ai",
-        "avatar": "🧠",
-        "base_currency": "€",
-        "created_at": "2026-08-10 14:15:00"
-    }
-]
 
 class StorageManager:
     def __init__(self, data_file: str = DATA_FILE, users_file: str = USERS_FILE):
@@ -52,10 +25,10 @@ class StorageManager:
                     self.users = [UserProfile(**item) for item in raw]
             except Exception as e:
                 print(f"Error loading users db: {e}")
-                self.users = [UserProfile(**u) for u in DEFAULT_USERS]
+                self.users = []
                 self._save_users()
         else:
-            self.users = [UserProfile(**u) for u in DEFAULT_USERS]
+            self.users = []
             self._save_users()
 
     def _save_users(self):
@@ -82,7 +55,7 @@ class StorageManager:
         with open(self.data_file, "w", encoding="utf-8") as f:
             json.dump(raw_list, f, indent=2)
 
-    # --- USER PROFILE METHODS ---
+    # --- USER PROFILE & ONBOARDING METHODS ---
 
     def get_users(self) -> List[UserProfile]:
         return self.users
@@ -93,26 +66,66 @@ class StorageManager:
                 return u
         return None
 
-    def login_or_create_user(self, name: str, email: str, avatar: str = "⚡", currency: str = "$") -> UserProfile:
+    def get_user_by_email(self, email: str) -> Optional[UserProfile]:
         email_clean = email.strip().lower()
         for u in self.users:
             if u.email.lower() == email_clean:
                 return u
+        return None
+
+    def onboard_user(self, req: UserOnboardRequest) -> UserProfile:
+        existing = self.get_user_by_email(req.email)
+        if existing:
+            # Update existing profile
+            existing.name = req.name
+            existing.avatar = req.avatar
+            existing.base_currency = req.base_currency
+            existing.trading_style = req.trading_style
+            existing.primary_market = req.primary_market
+            existing.account_capital = req.account_capital
+            existing.risk_per_trade_pct = req.risk_per_trade_pct
+            existing.trading_goals = req.trading_goals
+            self._save_users()
+            return existing
 
         # Create new trader profile
         new_id = f"trader_{uuid.uuid4().hex[:6]}"
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         user = UserProfile(
             id=new_id,
-            name=name.strip(),
-            email=email_clean,
-            avatar=avatar,
-            base_currency=currency,
+            name=req.name.strip(),
+            email=req.email.strip().lower(),
+            avatar=req.avatar,
+            base_currency=req.base_currency,
+            trading_style=req.trading_style,
+            primary_market=req.primary_market,
+            account_capital=req.account_capital,
+            risk_per_trade_pct=req.risk_per_trade_pct,
+            trading_goals=req.trading_goals,
             created_at=now_str
         )
         self.users.append(user)
         self._save_users()
         return user
+
+    def update_user(self, user_id: str, req: UserUpdateRequest) -> Optional[UserProfile]:
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return None
+
+        update_data = req.model_dump(exclude_unset=True)
+        for key, val in update_data.items():
+            if val is not None:
+                setattr(user, key, val)
+
+        self._save_users()
+        return user
+
+    def clear_all_data(self):
+        self.users = []
+        self.trades = []
+        self._save_users()
+        self._save_trades()
 
     # --- TRADES CRUD METHODS ---
 

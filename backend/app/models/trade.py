@@ -7,19 +7,44 @@ class UserProfile(BaseModel):
     email: str
     avatar: str = "⚡"
     base_currency: str = "$"
+    trading_style: str = "Day Trader"
+    primary_market: str = "Stocks"
+    account_capital: float = 10000.0
+    risk_per_trade_pct: float = 1.0
+    trading_goals: str = "Consistency & Risk Discipline"
     created_at: str
 
 class UserLoginRequest(BaseModel):
     email: str
+
+class UserOnboardRequest(BaseModel):
+    email: str
+    name: str
+    avatar: str = "⚡"
+    base_currency: str = "$"
+    trading_style: str = "Day Trader"
+    primary_market: str = "Stocks"
+    account_capital: float = 10000.0
+    risk_per_trade_pct: float = 1.0
+    trading_goals: str = "Consistency & Risk Discipline"
+
+class UserUpdateRequest(BaseModel):
     name: Optional[str] = None
+    avatar: Optional[str] = None
+    base_currency: Optional[str] = None
+    trading_style: Optional[str] = None
+    primary_market: Optional[str] = None
+    account_capital: Optional[float] = None
+    risk_per_trade_pct: Optional[float] = None
+    trading_goals: Optional[str] = None
 
 class TradeBase(BaseModel):
-    user_id: str = "trader_1"  # Scoped per trader profile
+    user_id: str
     date: str
     time: str = "09:30"
     symbol: str
-    asset_class: str = "Stocks"  # Stocks, Options, Crypto, Forex, Futures
-    action: str = "BUY"  # BUY, SELL
+    asset_class: str = "Stocks"
+    action: str = "BUY"
     quantity: float
     entry_price: float
     exit_price: float
@@ -28,7 +53,7 @@ class TradeBase(BaseModel):
     fees: float = 0.0
     setup_tag: str = "Breakout"
     mistake_tag: str = "None - Followed Plan"
-    emotion_rating: int = 4  # 1 to 5 scale
+    emotion_rating: int = 4
     notes: str = ""
 
 class TradeCreate(TradeBase):
@@ -56,7 +81,7 @@ class Trade(TradeBase):
     net_pnl: float
     pnl_percent: float
     r_multiple: float = 0.0
-    status: str = "WIN"  # WIN, LOSS, BREAKEVEN
+    status: str = "WIN"
     created_at: str
 
 class MetricsSummary(BaseModel):
@@ -78,8 +103,8 @@ class MetricsSummary(BaseModel):
     total_fees: float
 
 class TimeframeAggregation(BaseModel):
-    timeframe: str  # daily, weekly, monthly, yearly, all
-    period_label: str  # e.g., "2026-08-22", "Week 34, 2026", "Aug 2026", "2026"
+    timeframe: str
+    period_label: str
     net_pnl: float
     trades_count: int
     win_rate: float
@@ -107,13 +132,13 @@ class PerformanceReport(BaseModel):
     top_setups: List[Dict[str, Any]]
 
 class DiagnosticRequest(BaseModel):
-    user_id: str = "trader_1"
+    user_id: str
     trades: Optional[List[Trade]] = None
 
 class DiagnosticRule(BaseModel):
     title: str
     description: str
-    severity: str  # High, Medium, Low
+    severity: str
     action_item: str
 
 class DiagnosticResponse(BaseModel):
@@ -125,7 +150,7 @@ class DiagnosticResponse(BaseModel):
     recommendations: List[str]
 
 class StrategySimRequest(BaseModel):
-    user_id: str = "trader_1"
+    user_id: str
     strategy_name: str
     risk_per_trade_percent: float = 1.0
     stop_loss_atr_multiplier: float = 1.5
@@ -141,11 +166,11 @@ class StrategySimResult(BaseModel):
     trade_insights: List[str]
 
 class AIChatMessage(BaseModel):
-    role: str  # user, assistant
+    role: str
     content: str
 
 class AIChatRequest(BaseModel):
-    user_id: str = "trader_1"
+    user_id: str
     messages: List[AIChatMessage]
     context_trades: Optional[List[Trade]] = None
 

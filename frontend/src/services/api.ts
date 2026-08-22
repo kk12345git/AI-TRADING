@@ -1,36 +1,10 @@
 import {
   Trade, TradeInput, PerformanceReport, TimeframeFilter,
-  UserProfile, DiagnosticResponse, StrategySimResult, AIChatMessage, AIChatResponse
+  UserProfile, UserOnboardInput, UserUpdateInput,
+  DiagnosticResponse, StrategySimResult, AIChatMessage, AIChatResponse
 } from "../types/portfolio";
 
 const API_BASE_URL = "http://localhost:8000/api";
-
-const DEFAULT_TRADERS: UserProfile[] = [
-  {
-    id: "trader_1",
-    name: "Alex Morgan",
-    email: "alex@tradematrix.ai",
-    avatar: "📈",
-    base_currency: "$",
-    created_at: "2026-08-01 10:00:00"
-  },
-  {
-    id: "trader_2",
-    name: "Rahul Sharma",
-    email: "rahul@tradematrix.ai",
-    avatar: "⚡",
-    base_currency: "₹",
-    created_at: "2026-08-05 11:30:00"
-  },
-  {
-    id: "trader_3",
-    name: "Sarah Jenkins",
-    email: "sarah@tradematrix.ai",
-    avatar: "🧠",
-    base_currency: "€",
-    created_at: "2026-08-10 14:15:00"
-  }
-];
 
 function getLocalTrades(userId: string): Trade[] {
   if (typeof window === "undefined") return [];
@@ -52,17 +26,16 @@ function saveLocalTrades(userId: string, trades: Trade[]) {
 }
 
 function getLocalUsers(): UserProfile[] {
-  if (typeof window === "undefined") return DEFAULT_TRADERS;
+  if (typeof window === "undefined") return [];
   const saved = localStorage.getItem("trading_ai_users");
   if (saved) {
     try {
       return JSON.parse(saved);
     } catch {
-      return DEFAULT_TRADERS;
+      return [];
     }
   }
-  localStorage.setItem("trading_ai_users", JSON.stringify(DEFAULT_TRADERS));
-  return DEFAULT_TRADERS;
+  return [];
 }
 
 function saveLocalUsers(users: UserProfile[]) {
@@ -71,8 +44,20 @@ function saveLocalUsers(users: UserProfile[]) {
   }
 }
 
+function getActiveUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("trading_ai_active_user_id");
+}
+
+function setActiveUserId(id: string | null) {
+  if (typeof window !== "undefined") {
+    if (id) localStorage.setItem("trading_ai_active_user_id", id);
+    else localStorage.removeItem("trading_ai_active_user_id");
+  }
+}
+
 export const api = {
-  // --- USER PROFILES ---
+  // --- USER PROFILES & AUTH ---
 
   async getUsers(): Promise<UserProfile[]> {
     try {
@@ -88,36 +73,86 @@ export const api = {
     return getLocalUsers();
   },
 
-  async loginTrader(email: string, name?: string): Promise<UserProfile> {
+  async loginUser(email: string): Promise<UserProfile | null> {
     try {
       const res = await fetch(`${API_BASE_URL}/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name })
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) {
+        const user = await res.json();
+        setActiveUserId(user.id);
+        return user;
+      }
+    } catch (e) {
+      console.warn("Backend API offline, logging in locally:", e);
+    }
+
+    const currentUsers = getLocalUsers();
+    const found = currentUsers.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+    if (found) {
+      setActiveUserId(found.id);
+      return found;
+    }
+    return null;
+  },
+
+  async onboardUser(input: UserOnboardInput): Promise<UserProfile> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/onboard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input)
+      });
+      if (res.ok) {
+        const user = await res.json();
+        setActiveUserId(user.id);
+        return user;
+      }
+    } catch (e) {
+      console.warn("Backend API offline, onboarding locally:", e);
+    }
+
+    const currentUsers = getLocalUsers();
+    const newUser: UserProfile = {
+      id: `trader_${Date.now()}`,
+      ...input,
+      created_at: new Date().toISOString()
+    };
+    const updated = [newUser, ...currentUsers.filter(u => u.email !== newUser.email)];
+    saveLocalUsers(updated);
+    setActiveUserId(newUser.id);
+    return newUser;
+  },
+
+  async updateUserProfile(userId: string, input: UserUpdateInput): Promise<UserProfile | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input)
       });
       if (res.ok) {
         return await res.json();
       }
     } catch (e) {
-      console.warn("Backend API offline, creating local trader profile:", e);
+      console.warn("Backend API offline, updating user profile locally:", e);
     }
 
     const currentUsers = getLocalUsers();
-    const existing = currentUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (existing) return existing;
-
-    const newUser: UserProfile = {
-      id: `trader_${Date.now()}`,
-      name: name || email.split("@")[0],
-      email: email.toLowerCase(),
-      avatar: "⚡",
-      base_currency: "$",
-      created_at: new Date().toISOString()
-    };
-    const updated = [...currentUsers, newUser];
-    saveLocalUsers(updated);
-    return newUser;
+    const index = currentUsers.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      const updated = { ...currentUsers[index], ...input };
+      currentUsers[index] = updated;
+      saveLocalUsers(currentUsers);
+      return updated;
+    }
+    return null;
   },
+
+  getActiveUserId,
+  setActiveUserId,
 
   // --- TRADES CRUD (USER SCOPED) ---
 
@@ -307,7 +342,7 @@ export const api = {
       return {
         user_id: userId,
         health_score: 100,
-        summary: "Fresh Trader Portfolio. Log your first daily trade entry!",
+        summary: "Fresh Trader Portfolio. Log your first trade entry!",
         top_mistakes: [],
         rules: [
           {

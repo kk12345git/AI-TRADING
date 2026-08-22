@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from app.models.trade import (
     Trade, TradeCreate, TradeUpdate, PerformanceReport,
-    UserProfile, UserLoginRequest,
+    UserProfile, UserLoginRequest, UserOnboardRequest, UserUpdateRequest,
     DiagnosticRequest, DiagnosticResponse,
     StrategySimRequest, StrategySimResult,
     AIChatRequest, AIChatResponse
@@ -16,8 +16,8 @@ from app.engine.ai_copilot import run_trade_diagnostics, simulate_strategy_engin
 
 app = FastAPI(
     title="AI Trading Portfolio & Journal Manager API",
-    version="2.1.0",
-    description="Multi-User Trader Portfolio Manager API with Isolated Data & AI Co-pilot"
+    version="2.2.0",
+    description="Multi-User Trader Portfolio Manager API with Onboarding, Profile Management & Isolated Data"
 )
 
 # Enable CORS for Next.js frontend
@@ -38,16 +38,29 @@ def health_check():
         "trades_count": len(db.get_trades())
     }
 
-# --- USER PROFILE & AUTH ENDPOINTS ---
+# --- USER PROFILE & ONBOARDING ENDPOINTS ---
 
 @app.get("/api/users", response_model=List[UserProfile])
 def get_traders():
     return db.get_users()
 
-@app.post("/api/users/login", response_model=UserProfile)
-def login_or_register_trader(req: UserLoginRequest):
-    name = req.name if req.name else req.email.split("@")[0].capitalize()
-    return db.login_or_create_user(name=name, email=req.email)
+@app.post("/api/users/login", response_model=Optional[UserProfile])
+def login_trader(req: UserLoginRequest):
+    user = db.get_user_by_email(req.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="Trader account not found. Please complete onboarding.")
+    return user
+
+@app.post("/api/users/onboard", response_model=UserProfile)
+def onboard_trader(req: UserOnboardRequest):
+    return db.onboard_user(req)
+
+@app.put("/api/users/{user_id}", response_model=UserProfile)
+def update_trader(user_id: str, req: UserUpdateRequest):
+    updated = db.update_user(user_id, req)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Trader profile not found")
+    return updated
 
 # --- TRADES CRUD ENDPOINTS (USER SCOPED) ---
 
@@ -74,14 +87,14 @@ def delete_trade(trade_id: str):
     return {"success": True, "message": "Trade deleted successfully"}
 
 @app.post("/api/trades/clear", response_model=List[Trade])
-def clear_user_trades(user_id: str = Query("trader_1")):
+def clear_user_trades(user_id: str = Query(...)):
     return db.clear_user_trades(user_id=user_id)
 
 # --- ANALYTICS & PERFORMANCE REPORT (USER SCOPED) ---
 
 @app.get("/api/analytics", response_model=PerformanceReport)
 def get_analytics(
-    user_id: str = Query("trader_1", description="Trader User ID"),
+    user_id: str = Query(..., description="Trader User ID"),
     timeframe: str = Query("monthly", description="Timeframe grouping: daily, weekly, monthly, yearly, all")
 ):
     user_trades = db.get_trades(user_id=user_id)
@@ -92,11 +105,10 @@ def get_analytics(
 # --- AI CO-PILOT ENDPOINTS ---
 
 @app.post("/api/ai/diagnose", response_model=DiagnosticResponse)
-def diagnose_trades_endpoint(req: Optional[DiagnosticRequest] = None):
-    target_user_id = req.user_id if req else "trader_1"
-    user_trades = req.trades if req and req.trades else db.get_trades(user_id=target_user_id)
+def diagnose_trades_endpoint(req: DiagnosticRequest):
+    user_trades = req.trades if req.trades else db.get_trades(user_id=req.user_id)
     res = run_trade_diagnostics(user_trades)
-    res.user_id = target_user_id
+    res.user_id = req.user_id
     return res
 
 @app.post("/api/ai/strategy-sim", response_model=StrategySimResult)
