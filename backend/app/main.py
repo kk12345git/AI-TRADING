@@ -1,86 +1,25 @@
-import asyncio
-import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import uvicorn
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+from typing import List, Optional
 
-from app.core.config import settings
-from app.api.endpoints import router as api_router, provider
-from app.engine.signal import SignalEngine
-
-# Connection manager for WebSockets
-class WebSocketManager:
-    def __init__(self):
-        self.active_connections: list[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_text(json.dumps(message))
-            except Exception:
-                pass
-
-ws_manager = WebSocketManager()
-bg_broadcast_task = None
-
-async def market_ticks_loop():
-    """Background task streaming real-time live market ticks and indicator updates."""
-    symbols = ["NIFTY 50", "BANKNIFTY", "RELIANCE", "TCS", "INFY", "HDFCBANK"]
-    while True:
-        try:
-            for sym in symbols:
-                quote = await provider.get_quote(sym, "NSE")
-                candles_5m = await provider.get_historical_candles(sym, "NSE", "5m", 100)
-                candles_15m = await provider.get_historical_candles(sym, "NSE", "15m", 80)
-                candles_1m = await provider.get_historical_candles(sym, "NSE", "1m", 40)
-                option_data = await provider.get_option_chain(sym, "NSE")
-                
-                signal_data = SignalEngine.process_full_signal(
-                    symbol=sym,
-                    exchange="NSE",
-                    timeframe="5m",
-                    candles_15m=candles_15m,
-                    candles_5m=candles_5m,
-                    candles_1m=candles_1m,
-                    option_data=option_data,
-                    market_status="LIVE"
-                )
-                
-                payload = {
-                    "type": "TICK_UPDATE",
-                    "symbol": sym,
-                    "quote": quote.dict(),
-                    "signal": signal_data.dict(),
-                    "timestamp": quote.timestamp
-                }
-                await ws_manager.broadcast(payload)
-                await asyncio.sleep(0.5)
-        except Exception as e:
-            await asyncio.sleep(1.0)
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global bg_broadcast_task
-    bg_broadcast_task = asyncio.create_task(market_ticks_loop())
-    yield
-    if bg_broadcast_task:
-        bg_broadcast_task.cancel()
+from app.models.trade import (
+    Trade, TradeCreate, TradeUpdate, PerformanceReport,
+    DiagnosticRequest, DiagnosticResponse,
+    StrategySimRequest, StrategySimResult,
+    AIChatRequest, AIChatResponse
+)
+from app.storage import db
+from app.engine.analytics import generate_performance_report
+from app.engine.ai_copilot import run_trade_diagnostics, simulate_strategy_engine, answer_ai_question
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+    title="AI Trading Portfolio & Journal Manager API",
+    version="2.0.0",
+    description="Backend API for Trade Logging, Multi-timeframe Analytics, Mistake Diagnostics, Strategy Simulation & AI Co-pilot"
 )
 
-# CORS middleware for frontend communication
+# Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -89,28 +28,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "app": "AI Trading Portfolio Manager", "trades_count": len(db.get_all_trades())}
 
-@app.get("/")
-async def root():
-    return {
-        "app": settings.PROJECT_NAME,
-        "status": "ONLINE",
-        "market": "NSE / BSE LIVE",
-        "docs": "/docs"
-    }
+# --- TRADE CRUD ENDPOINTS ---
 
-@app.websocket("/ws/live")
-async def websocket_endpoint(websocket: WebSocket):
-    await ws_manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            # Respond to ping or request
-            req = json.loads(data)
-            if req.get("action") == "PING":
-                await websocket.send_text(json.dumps({"type": "PONG", "server_time": "OK"}))
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
-    except Exception:
-        ws_manager.disconnect(websocket)
+@app.get("/api/trades", response_model=List[Trade])
+def get_trades():
+    return db.get_all_trades()
+
+@app.post("/api/trades", response_model=Trade)
+def create_trade(trade_in: TradeCreate):
+    return db.create_trade(trade_in)
+
+@app.put("/api/trades/{trade_id}", response_model=Trade)
+def update_trade(trade_id: str, trade_update: TradeUpdate):
+    updated = db.update_trade(trade_id, trade_update)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    return updated
+
+@app.delete("/api/trades/{trade_id}")
+def delete_trade(trade_id: str):
+    success = db.delete_trade(trade_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    return {"success": True, "message": "Trade deleted successfully"}
+
+@app.post("/api/trades/reset-demo", response_model=List[Trade])
+def reset_demo_trades():
+    return db.reset_demo_data()
+
+# --- ANALYTICS & PERFORMANCE REPORT ---
+
+@app.get("/api/analytics", response_model=PerformanceReport)
+def get_analytics(timeframe: str = Query("monthly", description="Timeframe grouping: daily, weekly, monthly, yearly, all")):
+    trades = db.get_all_trades()
+    return generate_performance_report(trades, timeframe)
+
+# --- AI CO-PILOT ENDPOINTS ---
+
+@app.post("/api/ai/diagnose", response_model=DiagnosticResponse)
+def diagnose_trades_endpoint(req: Optional[DiagnosticRequest] = None):
+    trades = req.trades if req and req.trades else db.get_all_trades()
+    return run_trade_diagnostics(trades)
+
+@app.post("/api/ai/strategy-sim", response_model=StrategySimResult)
+def simulate_strategy_endpoint(req: StrategySimRequest):
+    trades = db.get_all_trades()
+    return simulate_strategy_engine(trades, req)
+
+@app.post("/api/ai/chat", response_model=AIChatResponse)
+def chat_ai_endpoint(req: AIChatRequest):
+    if not req.context_trades:
+        req.context_trades = db.get_all_trades()
+    return answer_ai_question(req)
+
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

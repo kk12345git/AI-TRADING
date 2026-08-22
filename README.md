@@ -1,27 +1,50 @@
-# ⚡ AI Trading Platform (NSE & BSE)
+# ⚡ TradeMatrix AI - Portfolio Manager & Journal Co-pilot
 
-An advanced institutional-grade AI Trading Platform for Indian markets (NSE & BSE) featuring real-time signal processing, Volume Profile, Fair Value Gaps (FVG), MACD Divergence, Auto-Fibonacci Retracements, Option Chain PCR Heatmaps, Backtesting, Bar Replay, and multi-broker support (Zerodha Kite, Dhan, Fyers, AngelOne).
-
----
-
-## 🛠️ Project Architecture
-
-- **Frontend**: Next.js 14, React, Tailwind CSS, Lucide Icons, HTML5 Canvas.
-- **Backend**: FastAPI, Pydantic, NumPy, Pandas, Uvicorn, Python.
-- **AI Engine**: Google Gemini API integration with fallback to deterministic strategy rules.
-- **Brokers Supported**: Zerodha Kite, Dhan HQ, Fyers v3, AngelOne SmartAPI, Mock Live Feed.
+TradeMatrix AI is a state-of-the-art **AI Trading Portfolio & Journal Manager** designed to simplify daily trade tracking, multi-timeframe analytics (Daily, Weekly, Monthly, Yearly), trade mistake elimination, quantitative strategy backtesting, and AI-powered trading assistance.
 
 ---
 
-## 🚀 Local Development Setup
+## 🌟 Key Features
+
+1. **Daily Trade Logger & Journal**:
+   - Log trades across **Stocks, Options, Crypto, Forex, and Futures**.
+   - Auto-calculates Net P&L, Return %, Risk-to-Reward (R:R) achieved, and Win/Loss status.
+   - Tag strategy setups (*SMC Order Block, Breakout, VWAP Reversion, Scalp*) and mistake/emotion tags (*FOMO, Over-leveraged, Moved Stop Loss, Revenge Trade*).
+   - Filter, sort, search, and export trade log to CSV.
+
+2. **Multi-Timeframe Performance Analytics**:
+   - Aggregate performance by **Daily, Weekly, Monthly, Yearly, and All-Time**.
+   - Recharts visual Equity Curve, P&L period distribution, and Mistake Cost Impact breakdown.
+   - Key KPI Cards: Net P&L, Win Rate %, Profit Factor, Max Drawdown, Expectancy.
+
+3. **AI Trade Mistake Diagnostics**:
+   - Assigns an overall **Execution Health Score (0-100)** to your trading performance.
+   - Identifies primary loss drivers and prescribes actionable rules to eliminate bad trading habits.
+
+4. **AI Quantitative Strategy Engine**:
+   - Library of institutional strategies (*SMC Order Block & Liquidity Sweep, VWAP Reversion, ORB Breakout*).
+   - Interactive simulator to backtest strategies and custom R:R parameters against your logged trades.
+
+5. **AI Trading Assistant Chatbot**:
+   - Answers advanced trading questions regarding **Smart Money Concepts (SMC)**, **Order Blocks**, **Option Greeks (Delta, Theta, Vega, IV)**, **Valuation**, and **Position Sizing (Kelly Criterion, 1% Risk Rule)**.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript, TailwindCSS, Recharts, Lucide Icons.
+- **Backend**: FastAPI, Pydantic V2, NumPy, Pandas, Uvicorn, Python.
+- **Persistence**: JSON / SQLite local database storage with pre-loaded demo trades.
+
+---
+
+## 🚀 Local Setup
 
 ### 1. Backend (FastAPI)
 ```bash
 cd backend
-python -m venv venv
-venv\Scripts\activate # On Windows
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 ### 2. Frontend (Next.js)
@@ -32,16 +55,3 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## 🌐 Deploy to Vercel
-
-1. Push code to your GitHub Repository: `https://github.com/kk12345git/AI-TRADING.git`
-2. Go to [Vercel Dashboard](https://vercel.com/new).
-3. Import `AI-TRADING` repository.
-4. Set Root Directory or keep default (the `vercel.json` automatically handles Next.js frontend & FastAPI serverless functions).
-5. Add optional Environment Variables:
-   - `GEMINI_API_KEY`: Your Google Gemini API Key
-   - `OPENAI_API_KEY`: Optional OpenAI API Key
-6. Click **Deploy**.
