@@ -9,11 +9,12 @@ import { TradeLoggerModal } from "../components/TradeLoggerModal";
 import { MistakeDiagnostic } from "../components/MistakeDiagnostic";
 import { AIStrategyHub } from "../components/AIStrategyHub";
 import { AICopilotChat } from "../components/AICopilotChat";
+import { UserLoginModal } from "../components/UserLoginModal";
 
 import { api } from "../services/api";
 import {
   Trade, TradeInput, PerformanceReport, TimeframeFilter,
-  CurrencySymbol, DiagnosticResponse, StrategySimResult, AIChatMessage
+  CurrencySymbol, UserProfile, DiagnosticResponse, StrategySimResult, AIChatMessage
 } from "../types/portfolio";
 
 export default function HomePage() {
@@ -21,81 +22,125 @@ export default function HomePage() {
   const [currency, setCurrency] = useState<CurrencySymbol>("$");
   const [timeframe, setTimeframe] = useState<TimeframeFilter>("monthly");
 
+  const [traders, setTraders] = useState<UserProfile[]>([]);
+  const [activeTrader, setActiveTrader] = useState<UserProfile>({
+    id: "trader_1",
+    name: "Alex Morgan",
+    email: "alex@tradematrix.ai",
+    avatar: "📈",
+    base_currency: "$",
+    created_at: "2026-08-01 10:00:00"
+  });
+
   const [trades, setTrades] = useState<Trade[]>([]);
   const [report, setReport] = useState<PerformanceReport | null>(null);
   const [diagnostic, setDiagnostic] = useState<DiagnosticResponse | null>(null);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isTraderModalOpen, setIsTraderModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const loadData = async () => {
+  // Load traders and default active trader data
+  const loadTraders = async () => {
+    try {
+      const fetchedUsers = await api.getUsers();
+      if (fetchedUsers.length > 0) {
+        setTraders(fetchedUsers);
+        setActiveTrader(fetchedUsers[0]);
+        setCurrency(fetchedUsers[0].base_currency);
+      }
+    } catch (e) {
+      console.error("Error loading traders:", e);
+    }
+  };
+
+  const loadTraderData = async (user: UserProfile, tf: TimeframeFilter) => {
     setLoading(true);
     try {
-      const fetchedTrades = await api.getTrades();
+      const fetchedTrades = await api.getTrades(user.id);
       setTrades(fetchedTrades);
 
-      const fetchedReport = await api.getAnalytics(timeframe);
+      const fetchedReport = await api.getAnalytics(user.id, tf);
       setReport(fetchedReport);
 
-      const fetchedDiag = await api.runDiagnostic(fetchedTrades);
+      const fetchedDiag = await api.runDiagnostic(user.id, fetchedTrades);
       setDiagnostic(fetchedDiag);
     } catch (e) {
-      console.error("Error loading application data:", e);
+      console.error("Error loading trader data:", e);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
-  }, [timeframe]);
+    loadTraders();
+  }, []);
+
+  useEffect(() => {
+    if (activeTrader) {
+      loadTraderData(activeTrader, timeframe);
+    }
+  }, [activeTrader, timeframe]);
+
+  const handleSelectTrader = (trader: UserProfile) => {
+    setActiveTrader(trader);
+    setCurrency(trader.base_currency);
+  };
+
+  const handleCreateTrader = async (email: string, name: string, baseCurrency: CurrencySymbol) => {
+    const newUser = await api.loginTrader(email, name);
+    newUser.base_currency = baseCurrency;
+    const updatedUsers = [...traders, newUser];
+    setTraders(updatedUsers);
+    setActiveTrader(newUser);
+    setCurrency(baseCurrency);
+  };
 
   const handleCreateTrade = async (input: TradeInput) => {
+    input.user_id = activeTrader.id;
     const created = await api.createTrade(input);
     const updatedTrades = [created, ...trades];
     setTrades(updatedTrades);
 
-    // Refresh analytics & diagnostic
-    const newReport = await api.getAnalytics(timeframe);
+    const newReport = await api.getAnalytics(activeTrader.id, timeframe);
     setReport(newReport);
 
-    const newDiag = await api.runDiagnostic(updatedTrades);
+    const newDiag = await api.runDiagnostic(activeTrader.id, updatedTrades);
     setDiagnostic(newDiag);
   };
 
   const handleDeleteTrade = async (id: string) => {
-    await api.deleteTrade(id);
+    await api.deleteTrade(activeTrader.id, id);
     const updatedTrades = trades.filter((t) => t.id !== id);
     setTrades(updatedTrades);
 
-    const newReport = await api.getAnalytics(timeframe);
+    const newReport = await api.getAnalytics(activeTrader.id, timeframe);
     setReport(newReport);
 
-    const newDiag = await api.runDiagnostic(updatedTrades);
+    const newDiag = await api.runDiagnostic(activeTrader.id, updatedTrades);
     setDiagnostic(newDiag);
   };
 
-  const handleResetDemoData = async () => {
-    const demoTrades = await api.resetDemoTrades();
-    setTrades(demoTrades);
-
-    const newReport = await api.getAnalytics(timeframe);
+  const handleClearUserTrades = async () => {
+    await api.clearUserTrades(activeTrader.id);
+    setTrades([]);
+    const newReport = await api.getAnalytics(activeTrader.id, timeframe);
     setReport(newReport);
-
-    const newDiag = await api.runDiagnostic(demoTrades);
+    const newDiag = await api.runDiagnostic(activeTrader.id, []);
     setDiagnostic(newDiag);
   };
 
   const handleRefreshDiagnostic = async () => {
-    const newDiag = await api.runDiagnostic(trades);
+    const newDiag = await api.runDiagnostic(activeTrader.id, trades);
     setDiagnostic(newDiag);
   };
 
   const handleSimulateStrategy = async (name: string, riskPct: number, targetRR: number): Promise<StrategySimResult> => {
-    return await api.simulateStrategy(name, riskPct, targetRR);
+    return await api.simulateStrategy(activeTrader.id, name, riskPct, targetRR);
   };
 
   const handleSendAIChat = async (messages: AIChatMessage[]) => {
-    return await api.askAICopilot(messages);
+    return await api.askAICopilot(activeTrader.id, messages);
   };
 
   return (
@@ -107,8 +152,10 @@ export default function HomePage() {
         setActiveTab={setActiveTab}
         currency={currency}
         setCurrency={setCurrency}
+        activeTrader={activeTrader}
+        onOpenTraderModal={() => setIsTraderModalOpen(true)}
         onOpenAddModal={() => setIsAddModalOpen(true)}
-        onResetDemoData={handleResetDemoData}
+        onClearUserTrades={handleClearUserTrades}
         totalTrades={trades.length}
       />
 
@@ -118,7 +165,7 @@ export default function HomePage() {
         {loading && !report ? (
           <div className="h-96 flex flex-col items-center justify-center space-y-3">
             <div className="w-10 h-10 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
-            <p className="text-xs text-slate-400 font-mono">Loading Trade Matrix Engine...</p>
+            <p className="text-xs text-slate-400 font-mono">Loading Trader Portfolio Matrix...</p>
           </div>
         ) : (
           <>
@@ -181,9 +228,19 @@ export default function HomePage() {
         currency={currency}
       />
 
+      {/* User Login & Profile Switcher Modal */}
+      <UserLoginModal
+        isOpen={isTraderModalOpen}
+        onClose={() => setIsTraderModalOpen(false)}
+        traders={traders}
+        activeTrader={activeTrader}
+        onSelectTrader={handleSelectTrader}
+        onCreateTrader={handleCreateTrader}
+      />
+
       {/* Footer */}
       <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
-        <p>TradeMatrix AI • Advanced Portfolio Manager & AI Trade Co-pilot</p>
+        <p>TradeMatrix AI • Multi-Trader Portfolio Manager & AI Trade Co-pilot</p>
       </footer>
     </div>
   );

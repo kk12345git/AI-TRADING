@@ -1,7 +1,20 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
+class UserProfile(BaseModel):
+    id: str
+    name: str
+    email: str
+    avatar: str = "⚡"
+    base_currency: str = "$"
+    created_at: str
+
+class UserLoginRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+
 class TradeBase(BaseModel):
+    user_id: str = "trader_1"  # Scoped per trader profile
     date: str
     time: str = "09:30"
     symbol: str
@@ -84,6 +97,7 @@ class MistakeStat(BaseModel):
     percentage_of_losses: float
 
 class PerformanceReport(BaseModel):
+    user_id: str
     timeframe: str
     metrics: MetricsSummary
     equity_curve: List[EquityPoint]
@@ -93,6 +107,7 @@ class PerformanceReport(BaseModel):
     top_setups: List[Dict[str, Any]]
 
 class DiagnosticRequest(BaseModel):
+    user_id: str = "trader_1"
     trades: Optional[List[Trade]] = None
 
 class DiagnosticRule(BaseModel):
@@ -102,6 +117,7 @@ class DiagnosticRule(BaseModel):
     action_item: str
 
 class DiagnosticResponse(BaseModel):
+    user_id: str
     health_score: int
     summary: str
     top_mistakes: List[MistakeStat]
@@ -109,6 +125,7 @@ class DiagnosticResponse(BaseModel):
     recommendations: List[str]
 
 class StrategySimRequest(BaseModel):
+    user_id: str = "trader_1"
     strategy_name: str
     risk_per_trade_percent: float = 1.0
     stop_loss_atr_multiplier: float = 1.5
@@ -128,6 +145,7 @@ class AIChatMessage(BaseModel):
     content: str
 
 class AIChatRequest(BaseModel):
+    user_id: str = "trader_1"
     messages: List[AIChatMessage]
     context_trades: Optional[List[Trade]] = None
 

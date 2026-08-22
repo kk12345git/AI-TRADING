@@ -4,8 +4,18 @@ export type TradeStatus = "WIN" | "LOSS" | "BREAKEVEN";
 export type TimeframeFilter = "daily" | "weekly" | "monthly" | "yearly" | "all";
 export type CurrencySymbol = "$" | "₹" | "€" | "£";
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  base_currency: CurrencySymbol;
+  created_at: string;
+}
+
 export interface Trade {
   id: string;
+  user_id: string;
   date: string;
   time: string;
   symbol: string;
@@ -29,6 +39,7 @@ export interface Trade {
 }
 
 export interface TradeInput {
+  user_id?: string;
   date: string;
   time: string;
   symbol: string;
@@ -88,6 +99,7 @@ export interface MistakeStat {
 }
 
 export interface PerformanceReport {
+  user_id: string;
   timeframe: TimeframeFilter;
   metrics: MetricsSummary;
   equity_curve: EquityPoint[];
@@ -105,6 +117,7 @@ export interface DiagnosticRule {
 }
 
 export interface DiagnosticResponse {
+  user_id?: string;
   health_score: number;
   summary: string;
   top_mistakes: MistakeStat[];

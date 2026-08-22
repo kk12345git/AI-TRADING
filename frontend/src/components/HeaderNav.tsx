@@ -1,16 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { TrendingUp, Plus, RefreshCw, DollarSign, ShieldCheck, Sparkles, BookOpen, BarChart3, Brain } from "lucide-react";
-import { CurrencySymbol } from "../types/portfolio";
+import { TrendingUp, Plus, RefreshCw, User, ShieldCheck, Sparkles, BookOpen, BarChart3, Brain, Trash2 } from "lucide-react";
+import { CurrencySymbol, UserProfile } from "../types/portfolio";
 
 interface HeaderNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   currency: CurrencySymbol;
   setCurrency: (c: CurrencySymbol) => void;
+  activeTrader: UserProfile;
+  onOpenTraderModal: () => void;
   onOpenAddModal: () => void;
-  onResetDemoData: () => void;
+  onClearUserTrades: () => void;
   totalTrades: number;
 }
 
@@ -19,8 +21,10 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   setActiveTab,
   currency,
   setCurrency,
+  activeTrader,
+  onOpenTraderModal,
   onOpenAddModal,
-  onResetDemoData,
+  onClearUserTrades,
   totalTrades
 }) => {
   const [timeStr, setTimeStr] = useState<string>("");
@@ -61,17 +65,31 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                   TradeMatrix AI
                 </h1>
                 <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full">
-                  Portfolio & Journal
+                  Portfolio Manager
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">AI Trading Co-pilot & Mistake Diagnostic Engine</p>
+              <p className="text-xs text-slate-400 font-medium">Multi-User Isolated Trading Engine & AI Co-pilot</p>
             </div>
           </div>
 
-          {/* Quick Actions & Currency Selector */}
+          {/* User Profile & Quick Actions */}
           <div className="flex items-center space-x-3">
+            
+            {/* Active Trader Profile Badge */}
+            <button
+              onClick={onOpenTraderModal}
+              title="Click to switch trader account or register profile"
+              className="flex items-center space-x-2.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-cyan-500/30 rounded-xl transition-all shadow-md"
+            >
+              <span className="text-base">{activeTrader.avatar}</span>
+              <div className="text-left hidden sm:block">
+                <div className="text-xs font-bold text-white leading-tight">{activeTrader.name}</div>
+                <div className="text-[10px] text-cyan-400 font-mono">Switch Account</div>
+              </div>
+            </button>
+
             {/* Currency Selector */}
-            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1">
+            <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1">
               {(["$", "₹", "€", "£"] as CurrencySymbol[]).map((c) => (
                 <button
                   key={c}
@@ -87,21 +105,13 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               ))}
             </div>
 
-            {/* Live Clock & Status */}
-            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-slate-900/60 border border-slate-800/60 rounded-xl text-xs text-slate-400 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>LIVE</span>
-              <span className="text-slate-600">|</span>
-              <span className="text-slate-300">{timeStr}</span>
-            </div>
-
-            {/* Reset Demo Data */}
+            {/* Clear Portfolio Button */}
             <button
-              onClick={onResetDemoData}
-              title="Reload realistic sample trades data"
-              className="p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 rounded-xl transition-all"
+              onClick={onClearUserTrades}
+              title="Clear all trades for current trader profile"
+              className="p-2.5 bg-slate-900 hover:bg-rose-950/50 border border-slate-800 hover:border-rose-500/30 text-slate-400 hover:text-rose-400 rounded-xl transition-all"
             >
-              <RefreshCw className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" />
             </button>
 
             {/* Add Trade Button */}
