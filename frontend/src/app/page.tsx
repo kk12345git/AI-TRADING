@@ -9,6 +9,7 @@ import { TradeLoggerModal } from "../components/TradeLoggerModal";
 import { UserProfileSettingsModal } from "../components/UserProfileSettingsModal";
 import { TraderComparisonView } from "../components/TraderComparisonView";
 import { AuthPortal } from "../components/AuthPortal";
+import { MobileBottomNav } from "../components/MobileBottomNav";
 
 import { api } from "../services/api";
 import {
@@ -17,7 +18,7 @@ import {
 } from "../types/portfolio";
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [activeTab, setActiveTab] = useState<string>("register");
   const [timeframe, setTimeframe] = useState<TimeframeFilter>("monthly");
 
   const [traders, setTraders] = useState<UserProfile[]>([]);
@@ -162,7 +163,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       
-      {/* Header Navigation with Active Trader info & Switcher */}
+      {/* Top Header Navigation */}
       <HeaderNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -180,32 +181,19 @@ export default function HomePage() {
         totalTrades={trades.length}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Main Content with bottom padding on mobile for MobileBottomNav */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-7 space-y-6 pb-24 md:pb-8">
         
-        {/* TAB 1: PERIODIC DASHBOARD */}
-        {activeTab === "dashboard" && (
-          <div className="space-y-8">
-            {/* KPI Cards Overview */}
-            {report && (
-              <MetricsOverview
-                metrics={report.metrics}
-                currency={currency}
-                accountCapital={activeTrader.account_capital}
-              />
-            )}
-
-            {/* Periodic Performance Analytics (Weekly, Monthly, Quarterly, Half-Yearly, Annually) */}
-            <AnalyticsCharts
-              report={report}
-              currentTimeframe={timeframe}
-              onTimeframeChange={(tf) => setTimeframe(tf)}
-              currency={currency}
-            />
-          </div>
+        {/* KPI Cards Overview (Always visible on top of Dashboard and Register) */}
+        {report && (
+          <MetricsOverview
+            metrics={report.metrics}
+            currency={currency}
+            accountCapital={activeTrader.account_capital}
+          />
         )}
 
-        {/* TAB 2: TRADE REGISTER (DAILY POINTS & P&L GROUPING) */}
+        {/* TAB 1: TRADE REGISTER (DAILY POINTS & P&L) */}
         {activeTab === "register" && (
           <TradeJournalTable
             trades={trades}
@@ -219,6 +207,18 @@ export default function HomePage() {
             onDeleteTrade={handleDeleteTrade}
             onClearTrades={handleClearTrades}
           />
+        )}
+
+        {/* TAB 2: PERIODIC DASHBOARD (DAILY, WEEKLY, MONTHLY, QUARTERLY, HALF, ANNUALLY) */}
+        {activeTab === "dashboard" && (
+          <div className="space-y-6">
+            <AnalyticsCharts
+              report={report}
+              currentTimeframe={timeframe}
+              onTimeframeChange={(tf) => setTimeframe(tf)}
+              currency={currency}
+            />
+          </div>
         )}
 
         {/* TAB 3: DUAL TRADERS COMPARISON */}
@@ -235,10 +235,17 @@ export default function HomePage() {
 
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">
-        <p>Trading Register & Periodic Performance Analytics System • Authenticated Trader: <span className="text-slate-400 font-semibold">{activeTrader.name}</span></p>
-      </footer>
+      {/* Mobile Bottom Navigation Bar (Fixed at bottom on phones) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenAddModal={() => {
+          setEditingTrade(null);
+          setIsAddModalOpen(true);
+        }}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
+        activeTrader={activeTrader}
+      />
 
       {/* Modals */}
       <TradeLoggerModal

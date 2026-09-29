@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Trade, TradeInput, InstrumentType, ActionType, CurrencySymbol } from "../types/portfolio";
-import { X, Plus, Save, TrendingUp, TrendingDown, Calculator, Tag, Calendar, Clock, DollarSign } from "lucide-react";
+import { X, Plus, Save, TrendingUp, TrendingDown, Calculator, Tag, Calendar, Clock, DollarSign, Check } from "lucide-react";
 
 interface TradeLoggerModalProps {
   isOpen: boolean;
@@ -21,17 +21,14 @@ const QUICK_SYMBOLS = [
   "FINNIFTY",
   "SENSEX",
   "RELIANCE",
-  "HDFCBANK",
-  "BTC/USDT"
+  "HDFCBANK"
 ];
 
 const STRATEGY_PRESETS = [
   "My Core Strategy",
   "Breakout & Retest",
-  "Opening Range Breakout",
-  "VWAP Pullback",
-  "Trend Continuation",
-  "Support / Resistance Bounce",
+  "Opening Range",
+  "VWAP Bounce",
   "Quick Scalp"
 ];
 
@@ -62,7 +59,6 @@ export const TradeLoggerModal: React.FC<TradeLoggerModalProps> = ({
   const [notes, setNotes] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Populate form if editing
   useEffect(() => {
     if (editingTrade) {
       setDate(editingTrade.date);
@@ -84,7 +80,7 @@ export const TradeLoggerModal: React.FC<TradeLoggerModalProps> = ({
     }
   }, [editingTrade, isOpen]);
 
-  // Compute calculated points
+  // Compute points
   const autoPoints = action === "BUY"
     ? Number((exitPrice - entryPrice).toFixed(2))
     : Number((entryPrice - exitPrice).toFixed(2));
@@ -116,7 +112,7 @@ export const TradeLoggerModal: React.FC<TradeLoggerModalProps> = ({
         exit_price: exitPrice,
         points: effectivePoints,
         fees: fees || 0,
-        strategy: strategy.trim() || "My Custom Strategy",
+        strategy: strategy.trim() || "My Strategy",
         notes: notes.trim()
       };
 
@@ -130,138 +126,121 @@ export const TradeLoggerModal: React.FC<TradeLoggerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-6">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md">
+      <div className="relative w-full max-w-2xl bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col my-0 sm:my-6 animate-in slide-in-from-bottom duration-200">
         
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 bg-slate-950/60">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/70 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
               action === "BUY" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
             }`}>
               {action === "BUY" ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">
-                {editingTrade ? "Edit Trade Entry" : "Register Trade Entry & Exit"}
+              <h2 className="text-base font-bold text-white">
+                {editingTrade ? "Edit Trade" : "Log Trade Entry & Exit"}
               </h2>
-              <p className="text-xs text-slate-400">
-                Enter execution details, points captured/lost, and daily profit/loss
+              <p className="text-[11px] text-slate-400">
+                Points & Daily Profit/Loss Register
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-all"
+            className="p-2 text-slate-400 hover:text-white bg-slate-800/60 active:bg-slate-700 rounded-xl transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Live Calculation Banner */}
-        <div className={`px-6 py-4 border-b flex flex-wrap items-center justify-between gap-4 ${
+        {/* Live Calculation Banner (Sticky & Clear) */}
+        <div className={`px-5 py-3 border-b flex items-center justify-between shrink-0 ${
           isWin
-            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+            ? "bg-emerald-950/30 border-emerald-900/40 text-emerald-400"
             : isLoss
-            ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
-            : "bg-slate-800/40 border-slate-800 text-slate-300"
+            ? "bg-rose-950/30 border-rose-900/40 text-rose-400"
+            : "bg-slate-850 border-slate-800 text-slate-300"
         }`}>
           <div>
-            <span className="text-[11px] uppercase tracking-wider font-semibold opacity-75">Points Captured / Lost:</span>
-            <div className="text-xl font-black">
+            <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 block">Points</span>
+            <div className="text-lg sm:text-xl font-black">
               {effectivePoints > 0 ? `+${effectivePoints}` : effectivePoints} pts
             </div>
           </div>
 
-          <div>
-            <span className="text-[11px] uppercase tracking-wider font-semibold opacity-75">Net Trade P&L:</span>
-            <div className="text-2xl font-black">
-              {netPnl > 0 ? `+${currency}${netPnl.toLocaleString()}` : `${currency}${netPnl.toLocaleString()}`}
+          <div className="text-center">
+            <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 block">Net P&L</span>
+            <div className="text-xl sm:text-2xl font-black">
+              {netPnl >= 0 ? `+${currency}${netPnl.toLocaleString()}` : `${currency}${netPnl.toLocaleString()}`}
             </div>
           </div>
 
           <div className="text-right">
-            <span className="text-[11px] uppercase tracking-wider font-semibold opacity-75">Result:</span>
-            <div className="font-bold text-sm">
-              {isWin ? "✅ PROFITABLE" : isLoss ? "❌ LOSS" : "⚪ BREAKEVEN"}
-            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 block">Result</span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+              isWin ? "bg-emerald-500/20 text-emerald-300" : isLoss ? "bg-rose-500/20 text-rose-300" : "bg-slate-800 text-slate-400"
+            }`}>
+              {isWin ? "PROFIT" : isLoss ? "LOSS" : "FLAT"}
+            </span>
           </div>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 pb-safe">
           
-          {/* Row 1: Action (BUY/SELL) & Instrument Type */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">
-                Trade Direction
-              </label>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 border border-slate-800 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setAction("BUY")}
-                  className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    action === "BUY" ? "bg-emerald-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  BUY / LONG
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAction("SELL")}
-                  className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    action === "SELL" ? "bg-rose-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <TrendingDown className="w-3.5 h-3.5" />
-                  SELL / SHORT
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">
-                Instrument Type
-              </label>
-              <select
-                value={instrumentType}
-                onChange={(e) => setInstrumentType(e.target.value as InstrumentType)}
-                className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-cyan-500 focus:outline-none"
+          {/* Action BUY / SELL Buttons */}
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">
+              Direction
+            </label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 border border-slate-800 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setAction("BUY")}
+                className={`py-3 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 active:scale-98 ${
+                  action === "BUY" ? "bg-emerald-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
+                }`}
               >
-                <option value="OPTIONS">OPTIONS (CE / PE)</option>
-                <option value="FUTURES">FUTURES</option>
-                <option value="EQUITY">EQUITY / STOCKS</option>
-                <option value="CRYPTO">CRYPTO</option>
-                <option value="FOREX">FOREX</option>
-              </select>
+                <TrendingUp className="w-4 h-4" />
+                BUY / CALL (LONG)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAction("SELL")}
+                className={`py-3 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 active:scale-98 ${
+                  action === "SELL" ? "bg-rose-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <TrendingDown className="w-4 h-4" />
+                SELL / PUT (SHORT)
+              </button>
             </div>
           </div>
 
-          {/* Row 2: Symbol & Quick Presets */}
+          {/* Symbol & Fast Chips */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Symbol / Instrument
               </label>
-              <span className="text-[11px] text-slate-500">Fast chips available</span>
+              <span className="text-[10px] text-cyan-400">Tap preset below</span>
             </div>
             <input
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="e.g. NIFTY 25000 CE, BANKNIFTY 54000 PE, RELIANCE..."
+              placeholder="e.g. NIFTY 25000 CE, BANKNIFTY 54000 PE..."
               required
-              className="w-full bg-slate-950 border border-slate-800 text-white px-4 py-2.5 rounded-xl text-sm focus:border-cyan-500 focus:outline-none"
+              className="w-full bg-slate-950 border border-slate-800 text-white px-3.5 py-2.5 rounded-xl text-sm focus:border-cyan-500 focus:outline-none"
             />
-            <div className="flex flex-wrap gap-1.5 mt-2">
+            <div className="flex flex-wrap gap-1.5 mt-2 overflow-x-auto pb-0.5">
               {QUICK_SYMBOLS.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setSymbol(s)}
-                  className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 font-mono"
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-[11px] text-slate-300 font-mono whitespace-nowrap"
                 >
                   {s}
                 </button>
@@ -269,11 +248,11 @@ export const TradeLoggerModal: React.FC<TradeLoggerModalProps> = ({
             </div>
           </div>
 
-          {/* Row 3: Date, Time & Quantity */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Date & Time */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-cyan-400" />
                 Date
               </label>
               <input
@@ -281,13 +260,13 @@ export const TradeLoggerModal: React.FC<TradeLoggerModalProps> = ({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2.5 rounded-xl text-xs focus:border-cyan-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-cyan-400" />
                 Time
               </label>
               <input
@@ -295,151 +274,146 @@ export const TradeLoggerModal: React.FC<TradeLoggerModalProps> = ({
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2.5 rounded-xl text-xs focus:border-cyan-500 focus:outline-none"
               />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">
-                Quantity / Lots
-              </label>
-              <input
-                type="number"
-                min="0.01"
-                step="any"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                required
-                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none font-mono"
-              />
-              <div className="flex gap-1 mt-1">
-                {[25, 50, 75, 100].map(q => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setQuantity(q)}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
-          {/* Row 4: Entry Price, Exit Price, Points & Brokerage */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Entry Price & Exit Price */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
                 Entry Price ({currency})
               </label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="any"
                 value={entryPrice}
                 onChange={(e) => setEntryPrice(Number(e.target.value))}
                 required
-                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none font-mono"
+                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2.5 rounded-xl text-sm font-mono font-bold focus:border-cyan-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
                 Exit Price ({currency})
               </label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="any"
                 value={exitPrice}
                 onChange={(e) => setExitPrice(Number(e.target.value))}
                 required
-                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none font-mono"
+                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2.5 rounded-xl text-sm font-mono font-bold focus:border-cyan-500 focus:outline-none"
               />
             </div>
+          </div>
 
+          {/* Points (Auto or Manual Override) & Quantity */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1 block flex items-center justify-between">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center justify-between">
                 <span>Points (pts)</span>
-                <span className="text-[10px] text-slate-500">or auto</span>
+                <span className="text-[9px] text-slate-500">Auto: {autoPoints}</span>
               </label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="any"
                 value={manualPoints}
                 placeholder={String(autoPoints)}
                 onChange={(e) => setManualPoints(e.target.value)}
-                className="w-full bg-slate-950 border border-cyan-500/50 text-cyan-300 px-3 py-2 rounded-xl text-sm focus:border-cyan-400 focus:outline-none font-mono font-bold"
+                className="w-full bg-slate-950 border border-cyan-500/50 text-cyan-300 px-3 py-2.5 rounded-xl text-sm font-mono font-bold focus:border-cyan-400 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 block">
-                Fees / Charges ({currency})
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+                Quantity / Lots
               </label>
               <input
                 type="number"
+                inputMode="numeric"
+                min="1"
                 step="any"
-                value={fees}
-                onChange={(e) => setFees(Number(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none font-mono"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                required
+                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2.5 rounded-xl text-sm font-mono font-bold focus:border-cyan-500 focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Row 5: Strategy / Setup Name */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
-              <Tag className="w-3.5 h-3.5 text-cyan-400" />
-              Strategy / Setup Used
-            </label>
-            <input
-              type="text"
-              value={strategy}
-              onChange={(e) => setStrategy(e.target.value)}
-              placeholder="e.g. My Core Strategy, Breakout, Scalp..."
-              className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none"
-            />
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {STRATEGY_PRESETS.map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => setStrategy(st)}
-                  className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
-                >
-                  {st}
-                </button>
-              ))}
+          {/* Quantity Fast Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+            <span className="text-[10px] text-slate-500 mr-1">Quick Lots:</span>
+            {[25, 50, 65, 75, 100, 200].map(q => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setQuantity(q)}
+                className={`text-[11px] px-2 py-1 rounded-lg border font-mono transition-all ${
+                  quantity === q ? "bg-cyan-500/20 text-cyan-300 border-cyan-500" : "bg-slate-800 text-slate-400 border-slate-700"
+                }`}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {/* Fees & Strategy */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+                Fees / Brokerage ({currency})
+              </label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                value={fees}
+                onChange={(e) => setFees(Number(e.target.value))}
+                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm font-mono focus:border-cyan-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+                Strategy Name
+              </label>
+              <input
+                type="text"
+                value={strategy}
+                onChange={(e) => setStrategy(e.target.value)}
+                placeholder="Strategy tag..."
+                className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none"
+              />
             </div>
           </div>
 
-          {/* Row 6: Notes */}
+          {/* Notes */}
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">
-              Trade Notes & Learnings
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+              Notes (Optional)
             </label>
-            <textarea
-              rows={2}
+            <input
+              type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Waited for 5-min candle close above resistance, followed target cleanly..."
-              className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-sm focus:border-cyan-500 focus:outline-none resize-none"
+              placeholder="e.g. 5m breakout, trailed SL..."
+              className="w-full bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-xl text-xs focus:border-cyan-500 focus:outline-none"
             />
           </div>
 
-          {/* Submit Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-semibold transition-all"
-            >
-              Cancel
-            </button>
+          {/* Sticky Actions at bottom */}
+          <div className="pt-2 sticky bottom-0 bg-slate-900 pb-1">
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 active:scale-[0.98] text-slate-950 font-black text-sm shadow-xl shadow-cyan-500/20 transition-all flex items-center justify-center gap-2"
             >
               {editingTrade ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
               {editingTrade ? "Update Trade Entry" : "Save Trade to Register"}
