@@ -8,24 +8,10 @@ from app.providers.base import MarketDataProvider
 from app.models.schemas import Instrument, TickData, Candle, OptionChainData, OptionStrike, MarketStatus
 
 MOCK_INSTRUMENTS: List[Dict[str, Any]] = [
-    # NSE Indices
-    {"symbol": "NIFTY 50", "trading_symbol": "NIFTY", "name": "NIFTY 50 Index", "exchange": "NSE", "instrument_type": "INDEX", "lot_size": 25, "tick_size": 0.05, "base_price": 24865.0, "token": "256265"},
-    {"symbol": "BANKNIFTY", "trading_symbol": "BANKNIFTY", "name": "NIFTY Bank Index", "exchange": "NSE", "instrument_type": "INDEX", "lot_size": 15, "tick_size": 0.05, "base_price": 52410.0, "token": "260105"},
-    {"symbol": "FINNIFTY", "trading_symbol": "FINNIFTY", "name": "NIFTY Financial Services", "exchange": "NSE", "instrument_type": "INDEX", "lot_size": 25, "tick_size": 0.05, "base_price": 23680.0, "token": "257801"},
-    
-    # NSE Equities
-    {"symbol": "RELIANCE", "trading_symbol": "RELIANCE", "name": "Reliance Industries Ltd", "exchange": "NSE", "instrument_type": "EQUITY", "lot_size": 250, "tick_size": 0.05, "base_price": 3020.50, "token": "738561"},
-    {"symbol": "TCS", "trading_symbol": "TCS", "name": "Tata Consultancy Services Ltd", "exchange": "NSE", "instrument_type": "EQUITY", "lot_size": 175, "tick_size": 0.05, "base_price": 4350.25, "token": "2953217"},
-    {"symbol": "INFY", "trading_symbol": "INFY", "name": "Infosys Ltd", "exchange": "NSE", "instrument_type": "EQUITY", "lot_size": 400, "tick_size": 0.05, "base_price": 1890.80, "token": "408065"},
-    {"symbol": "HDFCBANK", "trading_symbol": "HDFCBANK", "name": "HDFC Bank Ltd", "exchange": "NSE", "instrument_type": "EQUITY", "lot_size": 550, "tick_size": 0.05, "base_price": 1645.00, "token": "341249"},
-    {"symbol": "ICICIBANK", "trading_symbol": "ICICIBANK", "name": "ICICI Bank Ltd", "exchange": "NSE", "instrument_type": "EQUITY", "lot_size": 700, "tick_size": 0.05, "base_price": 1185.30, "token": "1270529"},
-    {"symbol": "SBIN", "trading_symbol": "SBIN", "name": "State Bank of India", "exchange": "NSE", "instrument_type": "EQUITY", "lot_size": 750, "tick_size": 0.05, "base_price": 825.40, "token": "779521"},
-    {"symbol": "TATAMOTORS", "trading_symbol": "TATAMOTORS", "name": "Tata Motors Ltd", "exchange": "NSE", "instrument_type": "EQUITY", "lot_size": 1400, "tick_size": 0.05, "base_price": 1080.00, "token": "884737"},
-
-    # BSE Equities
-    {"symbol": "SENSEX", "trading_symbol": "SENSEX", "name": "BSE SENSEX Index", "exchange": "BSE", "instrument_type": "INDEX", "lot_size": 10, "tick_size": 0.05, "base_price": 81500.0, "token": "1"},
-    {"symbol": "BSE:RELIANCE", "trading_symbol": "RELIANCE", "name": "Reliance Industries Ltd (BSE)", "exchange": "BSE", "instrument_type": "EQUITY", "lot_size": 1, "tick_size": 0.05, "base_price": 3021.00, "token": "500325"},
-    {"symbol": "BSE:TCS", "trading_symbol": "TCS", "name": "Tata Consultancy Services (BSE)", "exchange": "BSE", "instrument_type": "EQUITY", "lot_size": 1, "tick_size": 0.05, "base_price": 4351.00, "token": "532540"},
+    {"symbol": "XAUUSD", "trading_symbol": "XAUUSD", "name": "Gold / US Dollar Spot", "exchange": "FOREX", "instrument_type": "COMMODITY", "lot_size": 1, "tick_size": 0.01, "base_price": 2685.50, "token": "XAUUSD"},
+    {"symbol": "NASDAQ", "trading_symbol": "NASDAQ", "name": "NASDAQ 100 Index", "exchange": "US", "instrument_type": "INDEX", "lot_size": 1, "tick_size": 0.25, "base_price": 20150.0, "token": "NASDAQ"},
+    {"symbol": "NIFTY50", "trading_symbol": "NIFTY50", "name": "NSE NIFTY 50 Index", "exchange": "NSE", "instrument_type": "INDEX", "lot_size": 25, "tick_size": 0.05, "base_price": 25800.0, "token": "256265"},
+    {"symbol": "SENSEX", "trading_symbol": "SENSEX", "name": "BSE SENSEX Index", "exchange": "BSE", "instrument_type": "INDEX", "lot_size": 10, "tick_size": 0.05, "base_price": 84200.0, "token": "1"}
 ]
 
 class MockMarketDataProvider(MarketDataProvider):

@@ -17,7 +17,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     avatar: "⚡",
     base_currency: "₹",
     trading_style: "Price Action & Momentum",
-    primary_market: "NIFTY / BANKNIFTY Options",
+    primary_market: "XAUUSD, NASDAQ, NIFTY50, SENSEX",
     account_capital: 0,
     created_at: "2026-01-01 09:15:00"
   },
@@ -29,13 +29,13 @@ export const DEFAULT_USERS: UserProfile[] = [
     avatar: "🎯",
     base_currency: "₹",
     trading_style: "Strategy & Breakout",
-    primary_market: "Equities & Futures",
+    primary_market: "XAUUSD, NASDAQ, NIFTY50, SENSEX",
     account_capital: 0,
     created_at: "2026-01-01 09:15:00"
   }
 ];
 
-// Clean legacy localStorage to immediately switch to Rakesh & Karthi
+// Clean legacy localStorage and purge all demo/mock trades for live production app
 function purgeLegacyStorage() {
   if (typeof window === "undefined") return;
   try {
@@ -45,6 +45,15 @@ function purgeLegacyStorage() {
       localStorage.removeItem("trading_ai_active_user_id");
       localStorage.setItem("trade_reg_users", JSON.stringify(DEFAULT_USERS));
       localStorage.setItem("trade_reg_active_user", "rakesh");
+    }
+
+    // Purge mock demo trades from localStorage
+    for (const uid of ["rakesh", "karthi"]) {
+      const key = `trade_reg_trades_${uid}`;
+      const trs = localStorage.getItem(key);
+      if (trs && (trs.includes("trade-rakesh-") || trs.includes("trade-karthi-") || trs.includes("BANKNIFTY") || trs.includes("FINNIFTY"))) {
+        localStorage.removeItem(key);
+      }
     }
   } catch {}
 }
@@ -78,7 +87,11 @@ function getLocalTrades(userId: string): Trade[] {
   const saved = localStorage.getItem(`trade_reg_trades_${userId}`);
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const list = JSON.parse(saved);
+      if (Array.isArray(list)) {
+        // Strip out any previous demo mock entries
+        return list.filter(t => !t.id?.startsWith("trade-rakesh-") && !t.id?.startsWith("trade-karthi-"));
+      }
     } catch {}
   }
   return [];

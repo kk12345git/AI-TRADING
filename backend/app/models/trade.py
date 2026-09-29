@@ -31,7 +31,7 @@ class TradeBase(BaseModel):
     user_id: str
     date: str  # YYYY-MM-DD
     time: str = "09:30"
-    symbol: str  # e.g. NIFTY, BANKNIFTY, FINNIFTY, RELIANCE, AAPL
+    symbol: str  # XAUUSD, NASDAQ, NIFTY50, SENSEX
     instrument_type: str = "OPTIONS"  # OPTIONS, FUTURES, EQUITY, FOREX, CRYPTO
     action: str = "BUY"  # BUY, SELL
     quantity: float  # Lots or total shares

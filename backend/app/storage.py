@@ -1,7 +1,7 @@
 import json
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional
 from app.models.trade import (
     Trade, TradeCreate, TradeUpdate, UserProfile, UserLoginRequest, UserUpdateRequest
@@ -10,7 +10,7 @@ from app.models.trade import (
 DATA_FILE = os.path.join(os.path.dirname(__file__), "trades_db.json")
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users_db.json")
 
-# Dedicated 2 Traders: Rakesh (Code: 2580) & Karthi (Code: 3790) with 0 initial capital
+# Dedicated 2 Live Traders: Rakesh (Code: 2580) & Karthi (Code: 3790) with 0 initial capital
 DEFAULT_USERS = [
     UserProfile(
         id="rakesh",
@@ -20,7 +20,7 @@ DEFAULT_USERS = [
         avatar="⚡",
         base_currency="₹",
         trading_style="Price Action & Momentum",
-        primary_market="NIFTY / BANKNIFTY Options",
+        primary_market="XAUUSD, NASDAQ, NIFTY50, SENSEX",
         account_capital=0.0,
         created_at="2026-01-01 09:15:00"
     ),
@@ -32,66 +32,11 @@ DEFAULT_USERS = [
         avatar="🎯",
         base_currency="₹",
         trading_style="Strategy & Breakout",
-        primary_market="Equities & Futures",
+        primary_market="XAUUSD, NASDAQ, NIFTY50, SENSEX",
         account_capital=0.0,
         created_at="2026-01-01 09:15:00"
     )
 ]
-
-def generate_sample_trades(user_id: str) -> List[Trade]:
-    base_dates = [
-        # Quarter 1 (Half 1)
-        ("2026-01-12", "09:35", "NIFTY 24000 CE", "BUY", 50, 110.0, 155.0, 45.0, 2200.0, "WIN", "My Breakout Strategy"),
-        ("2026-01-19", "11:20", "BANKNIFTY 51200 PE", "BUY", 30, 280.0, 240.0, -40.0, -1250.0, "LOSS", "Support Retest"),
-        ("2026-02-04", "10:15", "FINNIFTY 23500 CE", "BUY", 65, 85.0, 135.0, 50.0, 3200.0, "WIN", "VWAP Bounce"),
-        ("2026-02-20", "14:10", "NIFTY 24200 CE", "BUY", 50, 95.0, 140.0, 45.0, 2200.0, "WIN", "Closing Momentum"),
-        ("2026-03-10", "10:00", "BANKNIFTY 52000 CE", "BUY", 30, 310.0, 420.0, 110.0, 3250.0, "WIN", "Morning Breakout"),
-        ("2026-03-24", "13:30", "RELIANCE EQ", "BUY", 40, 2900.0, 2860.0, -40.0, -1650.0, "LOSS", "Trend Pullback"),
-        # Quarter 2 (Half 1)
-        ("2026-04-08", "09:40", "NIFTY 24500 CE", "BUY", 50, 120.0, 185.0, 65.0, 3200.0, "WIN", "My Breakout Strategy"),
-        ("2026-05-14", "11:45", "BANKNIFTY 52500 PE", "BUY", 30, 250.0, 360.0, 110.0, 3250.0, "WIN", "Expiry Scalp"),
-        ("2026-06-18", "10:30", "NIFTY 24800 CE", "BUY", 50, 130.0, 95.0, -35.0, -1800.0, "LOSS", "Opening Drive"),
-        # Quarter 3 (Half 2)
-        ("2026-07-09", "10:05", "BANKNIFTY 53000 CE", "BUY", 30, 340.0, 460.0, 120.0, 3550.0, "WIN", "My Breakout Strategy"),
-        ("2026-08-12", "13:15", "FINNIFTY 24000 CE", "BUY", 65, 75.0, 125.0, 50.0, 3200.0, "WIN", "Support Retest"),
-        ("2026-08-25", "14:20", "NIFTY 25000 PE", "BUY", 50, 140.0, 105.0, -35.0, -1800.0, "LOSS", "Reversal Trap"),
-        ("2026-09-08", "09:35", "BANKNIFTY 53500 CE", "BUY", 30, 290.0, 410.0, 120.0, 3550.0, "WIN", "Morning Breakout"),
-        ("2026-09-15", "11:10", "NIFTY 25200 CE", "BUY", 50, 115.0, 175.0, 60.0, 2950.0, "WIN", "VWAP Bounce"),
-        ("2026-09-22", "10:45", "BANKNIFTY 53800 PE", "BUY", 30, 320.0, 260.0, -60.0, -1850.0, "LOSS", "Support Retest"),
-        ("2026-09-28", "09:30", "NIFTY 25300 CE", "BUY", 50, 135.0, 195.0, 60.0, 2950.0, "WIN", "My Breakout Strategy"),
-        ("2026-09-29", "09:45", "BANKNIFTY 54000 CE", "BUY", 30, 305.0, 440.0, 135.0, 4000.0, "WIN", "My Breakout Strategy"),
-        ("2026-09-29", "13:20", "NIFTY 25400 PE", "BUY", 50, 90.0, 65.0, -25.0, -1300.0, "LOSS", "Scalp Quick")
-    ]
-
-    sample_trades = []
-    for idx, (dt, tm, sym, act, qty, entry, exit_p, pts, pnl, stat, strat) in enumerate(base_dates):
-        if user_id == "karthi":
-            qty = qty * 1.5
-            pnl = round(pnl * 1.25, 2)
-            pts = round(pts * 1.05, 1)
-
-        t = Trade(
-            id=f"trade-{user_id}-{idx+1:03d}",
-            user_id=user_id,
-            date=dt,
-            time=tm,
-            symbol=sym,
-            instrument_type="OPTIONS" if "CE" in sym or "PE" in sym else "EQUITY",
-            action=act,
-            quantity=qty,
-            entry_price=entry,
-            exit_price=exit_p,
-            points=pts,
-            net_pnl=pnl,
-            pnl_percent=round((pts / entry) * 100, 2) if entry > 0 else 0.0,
-            fees=40.0,
-            status=stat,
-            strategy=strat,
-            notes="Strategy entry and exit followed.",
-            created_at=f"{dt} {tm}:00"
-        )
-        sample_trades.append(t)
-    return sample_trades
 
 class StorageManager:
     def __init__(self, data_file: str = DATA_FILE, users_file: str = USERS_FILE):
@@ -108,7 +53,6 @@ class StorageManager:
                 with open(self.users_file, "r", encoding="utf-8") as f:
                     raw = json.load(f)
                     if isinstance(raw, list) and len(raw) > 0:
-                        # Check if users are Rakesh and Karthi
                         usernames = [u.get("username", "") for u in raw]
                         if "rakesh" in usernames or "karthi" in usernames:
                             self.users = [UserProfile(**item) for item in raw]
@@ -136,22 +80,17 @@ class StorageManager:
             try:
                 with open(self.data_file, "r", encoding="utf-8") as f:
                     raw = json.load(f)
-                    if isinstance(raw, list) and len(raw) > 0:
-                        trade_user_ids = set(t.get("user_id", "") for t in raw)
-                        if "rakesh" in trade_user_ids or "karthi" in trade_user_ids:
-                            self.trades = [Trade(**item) for item in raw]
-                        else:
-                            self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
-                            self._save_trades()
+                    if isinstance(raw, list):
+                        self.trades = [Trade(**item) for item in raw]
                     else:
-                        self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
+                        self.trades = []
                         self._save_trades()
             except Exception as e:
-                print(f"Error loading trades json, initializing starter trades: {e}")
-                self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
+                print(f"Error loading trades json: {e}")
+                self.trades = []
                 self._save_trades()
         else:
-            self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
+            self.trades = []
             self._save_trades()
 
     def _save_trades(self):
@@ -181,7 +120,7 @@ class StorageManager:
         user = self.get_user_by_username(req.username)
         if not user:
             return None
-        # PIN code verification
+        # Secret code verification
         if str(user.pin).strip() == str(req.pin).strip():
             return user
         return None

@@ -33,19 +33,20 @@ export default function HomePage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Initialize App: load traders list and check if an active trader session exists
+  // Initialize App: load traders list. ALWAYS require authentication gate first on open/refresh!
   const initApp = async () => {
     setLoading(true);
     try {
       const fetchedTraders = await api.getUsers();
       setTraders(fetchedTraders);
+      // Strictly keep unauthenticated so authentication gate is always displayed first
+      setIsAuthenticated(false);
 
       const activeId = api.getActiveUserId();
       if (activeId) {
         const found = fetchedTraders.find(u => u.id === activeId);
         if (found) {
           setActiveTrader(found);
-          setIsAuthenticated(true);
         }
       }
     } catch (e) {
@@ -101,6 +102,8 @@ export default function HomePage() {
   const handleSwitchTrader = (targetTrader: UserProfile) => {
     api.setActiveUserId(targetTrader.id);
     setActiveTrader(targetTrader);
+    // When switching trader, open authentication gate for that trader
+    setIsAuthenticated(false);
   };
 
   // Trade CRUD Handlers
