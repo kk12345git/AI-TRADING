@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "trader_1",
+    "name": "Trader 1 (Alpha)",
+    "username": "trader1",
+    "pin": "1234",
+    "avatar": "\u26a1",
+    "base_currency": "\u20b9",
+    "trading_style": "Index Options & Momentum",
+    "primary_market": "NIFTY / BANKNIFTY",
+    "account_capital": 100000.0,
+    "created_at": "2026-01-01 09:15:00"
+  },
+  {
+    "id": "trader_2",
+    "name": "Trader 2 (Pro)",
+    "username": "trader2",
+    "pin": "5678",
+    "avatar": "\ud83c\udfaf",
+    "base_currency": "\u20b9",
+    "trading_style": "Price Action & Swing",
+    "primary_market": "Equities & Futures",
+    "account_capital": 150000.0,
+    "created_at": "2026-01-01 09:15:00"
+  }
+]

@@ -1,139 +1,108 @@
 "use client";
 
 import React from "react";
-import { MetricsSummary, TimeframeFilter, CurrencySymbol } from "../types/portfolio";
-import { TrendingUp, TrendingDown, Target, Scale, ShieldAlert, Award, Activity } from "lucide-react";
+import { MetricsSummary, CurrencySymbol } from "../types/portfolio";
+import {
+  TrendingUp, TrendingDown, Target, Zap, Award, ShieldAlert,
+  Percent, Scale, BarChart3, Crosshair
+} from "lucide-react";
 
 interface MetricsOverviewProps {
   metrics: MetricsSummary;
-  timeframe: TimeframeFilter;
-  setTimeframe: (tf: TimeframeFilter) => void;
   currency: CurrencySymbol;
+  accountCapital: number;
 }
 
 export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
   metrics,
-  timeframe,
-  setTimeframe,
-  currency
+  currency,
+  accountCapital
 }) => {
-  const isProfitable = metrics.net_pnl >= 0;
-
-  const timeframes: { id: TimeframeFilter; label: string }[] = [
-    { id: "daily", label: "Daily" },
-    { id: "weekly", label: "Weekly" },
-    { id: "monthly", label: "Monthly" },
-    { id: "yearly", label: "Yearly" },
-    { id: "all", label: "All Time" }
-  ];
-
-  const cards = [
-    {
-      title: "Net Profit / Loss",
-      value: `${currency}${metrics.net_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      subtitle: `${metrics.winning_trades} Wins / ${metrics.losing_trades} Losses`,
-      icon: isProfitable ? TrendingUp : TrendingDown,
-      color: isProfitable ? "text-emerald-400" : "text-rose-400",
-      bgColor: isProfitable ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"
-    },
-    {
-      title: "Win Rate",
-      value: `${metrics.win_rate}%`,
-      subtitle: `${metrics.total_trades} Total Executed Trades`,
-      icon: Target,
-      color: metrics.win_rate >= 50 ? "text-cyan-400" : "text-amber-400",
-      bgColor: "bg-cyan-500/10 border-cyan-500/20"
-    },
-    {
-      title: "Profit Factor",
-      value: `${metrics.profit_factor}`,
-      subtitle: metrics.profit_factor >= 1.5 ? "Institutional Grade" : "Optimization Needed",
-      icon: Scale,
-      color: metrics.profit_factor >= 1.5 ? "text-indigo-400" : "text-amber-400",
-      bgColor: "bg-indigo-500/10 border-indigo-500/20"
-    },
-    {
-      title: "Risk-to-Reward (R:R)",
-      value: `1:${metrics.risk_reward_ratio}`,
-      subtitle: `Avg Win ${currency}${metrics.avg_win} vs Loss ${currency}${metrics.avg_loss}`,
-      icon: Activity,
-      color: "text-purple-400",
-      bgColor: "bg-purple-500/10 border-purple-500/20"
-    },
-    {
-      title: "Max Drawdown",
-      value: `${metrics.max_drawdown_percent}%`,
-      subtitle: `Max Peak Drop: ${currency}${metrics.max_drawdown.toLocaleString()}`,
-      icon: ShieldAlert,
-      color: metrics.max_drawdown_percent < 15 ? "text-emerald-400" : "text-rose-400",
-      bgColor: "bg-slate-800/50 border-slate-700/50"
-    },
-    {
-      title: "Trade Expectancy",
-      value: `${currency}${metrics.expectancy}`,
-      subtitle: "Avg Expected P&L Per Trade",
-      icon: Award,
-      color: metrics.expectancy >= 0 ? "text-teal-400" : "text-rose-400",
-      bgColor: "bg-slate-800/50 border-slate-700/50"
-    }
-  ];
+  const isNetPositive = metrics.net_pnl >= 0;
+  const isPointsPositive = metrics.total_points >= 0;
+  const returnOnCapital = accountCapital > 0 ? ((metrics.net_pnl / accountCapital) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="space-y-6">
-      {/* Timeframe Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-900/70 border border-slate-800/80 rounded-2xl backdrop-blur-md">
-        <div>
-          <h2 className="text-base font-bold text-white flex items-center space-x-2">
-            <span>Portfolio Performance Snapshot</span>
-          </h2>
-          <p className="text-xs text-slate-400">Analyze performance metrics filtered by timeframe</p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      
+      {/* 1. Net P&L Card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Net P&L</span>
+          <span className={`p-2 rounded-xl text-xs font-bold ${
+            isNetPositive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+          }`}>
+            {isNetPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+          </span>
         </div>
-
-        {/* Filter Pills */}
-        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
-          {timeframes.map((tf) => (
-            <button
-              key={tf.id}
-              onClick={() => setTimeframe(tf.id)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                timeframe === tf.id
-                  ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30 font-bold"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              {tf.label}
-            </button>
-          ))}
+        <div className="mt-3">
+          <div className={`text-2xl md:text-3xl font-black tracking-tight ${isNetPositive ? "text-emerald-400" : "text-rose-400"}`}>
+            {isNetPositive ? `+${currency}${metrics.net_pnl.toLocaleString()}` : `${currency}${metrics.net_pnl.toLocaleString()}`}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 font-semibold">
+            <span>ROI on Capital:</span>
+            <span className={Number(returnOnCapital) >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+              {Number(returnOnCapital) >= 0 ? `+${returnOnCapital}%` : `${returnOnCapital}%`}
+            </span>
+          </p>
         </div>
       </div>
 
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map((card, idx) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={idx}
-              className={`p-5 rounded-2xl border backdrop-blur-md transition-all hover:scale-[1.01] ${card.bgColor}`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {card.title}
-                </span>
-                <div className={`p-2 rounded-xl bg-slate-900/60 border border-slate-800 ${card.color}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-              </div>
-              <div className={`text-2xl font-black tracking-tight ${card.color}`}>
-                {card.value}
-              </div>
-              <div className="mt-1 text-xs text-slate-400 font-medium">
-                {card.subtitle}
-              </div>
-            </div>
-          );
-        })}
+      {/* 2. Total Points Captured */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Points Captured</span>
+          <span className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <Zap className="w-4 h-4" />
+          </span>
+        </div>
+        <div className="mt-3">
+          <div className={`text-2xl md:text-3xl font-black tracking-tight ${isPointsPositive ? "text-cyan-400" : "text-rose-400"}`}>
+            {isPointsPositive ? `+${metrics.total_points.toFixed(1)}` : metrics.total_points.toFixed(1)} pts
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 font-semibold">
+            Avg: <span className="text-white font-bold">{metrics.avg_points_per_trade >= 0 ? `+${metrics.avg_points_per_trade}` : metrics.avg_points_per_trade} pts/trade</span>
+          </p>
+        </div>
       </div>
+
+      {/* 3. Win Rate & Total Trades */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Win Rate</span>
+          <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <Target className="w-4 h-4" />
+          </span>
+        </div>
+        <div className="mt-3">
+          <div className="text-2xl md:text-3xl font-black text-amber-400 tracking-tight">
+            {metrics.win_rate}%
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 font-semibold">
+            <span className="text-emerald-400">{metrics.winning_trades}W</span> • <span className="text-rose-400">{metrics.losing_trades}L</span> ({metrics.total_trades} total)
+          </p>
+        </div>
+      </div>
+
+      {/* 4. Profit Factor & Best Day */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Profit Factor</span>
+          <span className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            <Scale className="w-4 h-4" />
+          </span>
+        </div>
+        <div className="mt-3">
+          <div className="text-2xl md:text-3xl font-black text-purple-400 tracking-tight">
+            {metrics.profit_factor > 0 ? metrics.profit_factor.toFixed(2) : "0.00"}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 font-semibold flex items-center justify-between">
+            <span>Best Day:</span>
+            <span className="text-emerald-400 font-bold">+{currency}{metrics.best_day_pnl.toLocaleString()}</span>
+          </p>
+        </div>
+      </div>
+
     </div>
   );
 };

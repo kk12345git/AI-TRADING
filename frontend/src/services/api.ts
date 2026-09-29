@@ -1,63 +1,305 @@
 import {
   Trade, TradeInput, PerformanceReport, TimeframeFilter,
-  UserProfile, UserOnboardInput, UserUpdateInput,
-  DiagnosticResponse, StrategySimResult, AIChatMessage, AIChatResponse
+  UserProfile, UserLoginInput, UserUpdateInput,
+  MetricsSummary, TimeframeAggregation, DailyTradeGroup, EquityPoint, StrategyStat
 } from "../types/portfolio";
 
 const API_BASE_URL = "http://localhost:8000/api";
 
+const DEFAULT_USERS: UserProfile[] = [
+  {
+    id: "trader_1",
+    name: "Trader 1 (Alpha)",
+    username: "trader1",
+    pin: "1234",
+    avatar: "⚡",
+    base_currency: "₹",
+    trading_style: "Index Options & Momentum",
+    primary_market: "NIFTY / BANKNIFTY",
+    account_capital: 100000,
+    created_at: "2026-01-01 09:15:00"
+  },
+  {
+    id: "trader_2",
+    name: "Trader 2 (Pro)",
+    username: "trader2",
+    pin: "5678",
+    avatar: "🎯",
+    base_currency: "₹",
+    trading_style: "Price Action & Swing",
+    primary_market: "Equities & Futures",
+    account_capital: 150000,
+    created_at: "2026-01-01 09:15:00"
+  }
+];
+
+function getLocalUsers(): UserProfile[] {
+  if (typeof window === "undefined") return DEFAULT_USERS;
+  const saved = localStorage.getItem("trade_reg_users");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+  }
+  saveLocalUsers(DEFAULT_USERS);
+  return DEFAULT_USERS;
+}
+
+function saveLocalUsers(users: UserProfile[]) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("trade_reg_users", JSON.stringify(users));
+  }
+}
+
 function getLocalTrades(userId: string): Trade[] {
   if (typeof window === "undefined") return [];
-  const saved = localStorage.getItem(`trading_ai_trades_${userId}`);
+  const saved = localStorage.getItem(`trade_reg_trades_${userId}`);
   if (saved) {
     try {
       return JSON.parse(saved);
-    } catch {
-      return [];
-    }
+    } catch {}
   }
   return [];
 }
 
 function saveLocalTrades(userId: string, trades: Trade[]) {
   if (typeof window !== "undefined") {
-    localStorage.setItem(`trading_ai_trades_${userId}`, JSON.stringify(trades));
-  }
-}
-
-function getLocalUsers(): UserProfile[] {
-  if (typeof window === "undefined") return [];
-  const saved = localStorage.getItem("trading_ai_users");
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-function saveLocalUsers(users: UserProfile[]) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("trading_ai_users", JSON.stringify(users));
+    localStorage.setItem(`trade_reg_trades_${userId}`, JSON.stringify(trades));
   }
 }
 
 function getActiveUserId(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("trading_ai_active_user_id");
+  return localStorage.getItem("trade_reg_active_user");
 }
 
 function setActiveUserId(id: string | null) {
   if (typeof window !== "undefined") {
-    if (id) localStorage.setItem("trading_ai_active_user_id", id);
-    else localStorage.removeItem("trading_ai_active_user_id");
+    if (id) localStorage.setItem("trade_reg_active_user", id);
+    else localStorage.removeItem("trade_reg_active_user");
   }
 }
 
+// Client-side analytics fallback engine
+function computeClientAnalytics(trades: Trade[], timeframe: TimeframeFilter): PerformanceReport {
+  if (trades.length === 0) {
+    return {
+      user_id: "",
+      timeframe,
+      metrics: {
+        net_pnl: 0,
+        total_points: 0,
+        total_trades: 0,
+        winning_trades: 0,
+        losing_trades: 0,
+        breakeven_trades: 0,
+        win_rate: 0,
+        profit_factor: 0,
+        avg_win: 0,
+        avg_loss: 0,
+        avg_points_per_trade: 0,
+        risk_reward_ratio: 0,
+        max_drawdown: 0,
+        best_trade_pnl: 0,
+        worst_trade_pnl: 0,
+        best_day_pnl: 0,
+        worst_day_pnl: 0,
+        total_fees: 0
+      },
+      equity_curve: [],
+      timeframe_breakdown: [],
+      daily_groups: [],
+      strategy_breakdown: []
+    };
+  }
+
+  const sortedTrades = [...trades].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  const winning = sortedTrades.filter(t => t.status === "WIN");
+  const losing = sortedTrades.filter(t => t.status === "LOSS");
+  const breakeven = sortedTrades.filter(t => t.status === "BREAKEVEN");
+
+  const totalTrades = sortedTrades.length;
+  const winCount = winning.length;
+  const lossCount = losing.length;
+  const winRate = totalTrades > 0 ? Number(((winCount / totalTrades) * 100).toFixed(1)) : 0;
+
+  const totalWinPnl = winning.reduce((s, t) => s + t.net_pnl, 0);
+  const totalLossPnl = Math.abs(losing.reduce((s, t) => s + t.net_pnl, 0));
+  const netPnl = Number(sortedTrades.reduce((s, t) => s + t.net_pnl, 0).toFixed(2));
+  const totalPoints = Number(sortedTrades.reduce((s, t) => s + t.points, 0).toFixed(2));
+  const totalFees = Number(sortedTrades.reduce((s, t) => s + t.fees, 0).toFixed(2));
+
+  const avgWin = winCount > 0 ? Number((totalWinPnl / winCount).toFixed(2)) : 0;
+  const avgLoss = lossCount > 0 ? Number((totalLossPnl / lossCount).toFixed(2)) : 0;
+  const avgPoints = totalTrades > 0 ? Number((totalPoints / totalTrades).toFixed(2)) : 0;
+  const profitFactor = totalLossPnl > 0 ? Number((totalWinPnl / totalLossPnl).toFixed(2)) : (totalWinPnl > 0 ? totalWinPnl : 0);
+  const rrRatio = avgLoss > 0 ? Number((avgWin / avgLoss).toFixed(2)) : avgWin;
+
+  const bestTradePnl = Math.max(...sortedTrades.map(t => t.net_pnl));
+  const worstTradePnl = Math.min(...sortedTrades.map(t => t.net_pnl));
+
+  // Daily grouping
+  const dayMap: { [date: string]: Trade[] } = {};
+  for (const t of sortedTrades) {
+    if (!dayMap[t.date]) dayMap[t.date] = [];
+    dayMap[t.date].push(t);
+  }
+
+  const dailyTotals = Object.entries(dayMap).map(([_, trs]) => trs.reduce((s, t) => s + t.net_pnl, 0));
+  const bestDayPnl = dailyTotals.length > 0 ? Math.max(...dailyTotals) : 0;
+  const worstDayPnl = dailyTotals.length > 0 ? Math.min(...dailyTotals) : 0;
+
+  // Equity Curve
+  let cumPnl = 0;
+  let cumPts = 0;
+  let peak = 0;
+  let maxDd = 0;
+  const equity_curve: EquityPoint[] = [];
+
+  for (const date of Object.keys(dayMap).sort()) {
+    const dTrades = dayMap[date];
+    const dPnl = dTrades.reduce((s, t) => s + t.net_pnl, 0);
+    const dPts = dTrades.reduce((s, t) => s + t.points, 0);
+    cumPnl += dPnl;
+    cumPts += dPts;
+
+    if (cumPnl > peak) peak = cumPnl;
+    const dd = peak - cumPnl;
+    if (dd > maxDd) maxDd = dd;
+
+    equity_curve.push({
+      date,
+      pnl: Number(dPnl.toFixed(2)),
+      points: Number(dPts.toFixed(2)),
+      cumulative_pnl: Number(cumPnl.toFixed(2)),
+      cumulative_points: Number(cumPts.toFixed(2)),
+      trades_count: dTrades.length
+    });
+  }
+
+  // Daily Groups (newest days first)
+  const daily_groups: DailyTradeGroup[] = Object.keys(dayMap)
+    .sort((a, b) => b.localeCompare(a))
+    .map(date => {
+      const dTrs = dayMap[date].sort((a, b) => b.time.localeCompare(a.time));
+      const totPnl = dTrs.reduce((s, t) => s + t.net_pnl, 0);
+      const totPts = dTrs.reduce((s, t) => s + t.points, 0);
+      const w = dTrs.filter(t => t.status === "WIN").length;
+      const l = dTrs.filter(t => t.status === "LOSS").length;
+      return {
+        date,
+        total_pnl: Number(totPnl.toFixed(2)),
+        total_points: Number(totPts.toFixed(2)),
+        trades_count: dTrs.length,
+        wins: w,
+        losses: l,
+        win_rate: dTrs.length > 0 ? Number(((w / dTrs.length) * 100).toFixed(1)) : 0,
+        trades: dTrs
+      };
+    });
+
+  // Timeframe Breakdown
+  const tfGroups: { [key: string]: Trade[] } = {};
+  for (const t of sortedTrades) {
+    const d = new Date(t.date);
+    let key = t.date;
+    const year = isNaN(d.getFullYear()) ? "2026" : d.getFullYear();
+    const month = isNaN(d.getMonth()) ? 0 : d.getMonth() + 1;
+
+    if (timeframe === "daily") {
+      key = t.date;
+    } else if (timeframe === "weekly") {
+      // Simple ISO week approximation
+      const weekNum = Math.ceil((d.getDate()) / 7);
+      key = `${year}-W${String(weekNum).padStart(2, "0")}`;
+    } else if (timeframe === "monthly") {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      key = `${year}-${String(month).padStart(2, "0")} (${monthNames[month - 1] || "Month"})`;
+    } else if (timeframe === "quarterly") {
+      const q = Math.ceil(month / 3);
+      key = `${year}-Q${q}`;
+    } else if (timeframe === "half_yearly") {
+      const h = month <= 6 ? 1 : 2;
+      key = `${year}-H${h} (Half ${h})`;
+    } else if (timeframe === "annually") {
+      key = `${year}`;
+    }
+
+    if (!tfGroups[key]) tfGroups[key] = [];
+    tfGroups[key].push(t);
+  }
+
+  const timeframe_breakdown: TimeframeAggregation[] = Object.keys(tfGroups).sort().map(key => {
+    const grp = tfGroups[key];
+    const pnl = grp.reduce((s, t) => s + t.net_pnl, 0);
+    const pts = grp.reduce((s, t) => s + t.points, 0);
+    const w = grp.filter(t => t.status === "WIN").length;
+    const l = grp.filter(t => t.status === "LOSS").length;
+    return {
+      timeframe,
+      period_label: key,
+      net_pnl: Number(pnl.toFixed(2)),
+      total_points: Number(pts.toFixed(2)),
+      trades_count: grp.length,
+      wins: w,
+      losses: l,
+      win_rate: grp.length > 0 ? Number(((w / grp.length) * 100).toFixed(1)) : 0
+    };
+  });
+
+  // Strategy Breakdown
+  const stratMap: { [key: string]: Trade[] } = {};
+  for (const t of sortedTrades) {
+    const name = t.strategy || "General Setup";
+    if (!stratMap[name]) stratMap[name] = [];
+    stratMap[name].push(t);
+  }
+  const strategy_breakdown: StrategyStat[] = Object.entries(stratMap).map(([name, trs]) => {
+    const pnl = trs.reduce((s, t) => s + t.net_pnl, 0);
+    const pts = trs.reduce((s, t) => s + t.points, 0);
+    const w = trs.filter(t => t.status === "WIN").length;
+    return {
+      name,
+      trades_count: trs.length,
+      net_pnl: Number(pnl.toFixed(2)),
+      total_points: Number(pts.toFixed(2)),
+      win_rate: trs.length > 0 ? Number(((w / trs.length) * 100).toFixed(1)) : 0
+    };
+  }).sort((a, b) => b.net_pnl - a.net_pnl);
+
+  return {
+    user_id: "",
+    timeframe,
+    metrics: {
+      net_pnl: netPnl,
+      total_points: totalPoints,
+      total_trades: totalTrades,
+      winning_trades: winCount,
+      losing_trades: lossCount,
+      breakeven_trades: breakeven.length,
+      win_rate: winRate,
+      profit_factor: profitFactor,
+      avg_win: avgWin,
+      avg_loss: avgLoss,
+      avg_points_per_trade: avgPoints,
+      risk_reward_ratio: rrRatio,
+      max_drawdown: Number(maxDd.toFixed(2)),
+      best_trade_pnl: Number(bestTradePnl.toFixed(2)),
+      worst_trade_pnl: Number(worstTradePnl.toFixed(2)),
+      best_day_pnl: Number(bestDayPnl.toFixed(2)),
+      worst_day_pnl: Number(worstDayPnl.toFixed(2)),
+      total_fees: totalFees
+    },
+    equity_curve,
+    timeframe_breakdown,
+    daily_groups,
+    strategy_breakdown
+  };
+}
+
 export const api = {
-  // --- USER PROFILES & AUTH ---
+  // --- USERS & AUTH ---
 
   async getUsers(): Promise<UserProfile[]> {
     try {
@@ -68,17 +310,17 @@ export const api = {
         return users;
       }
     } catch (e) {
-      console.warn("Backend API offline, using local trader profiles:", e);
+      console.warn("Backend offline, using local users:", e);
     }
     return getLocalUsers();
   },
 
-  async loginUser(email: string): Promise<UserProfile | null> {
+  async loginUser(credentials: UserLoginInput): Promise<UserProfile | null> {
     try {
       const res = await fetch(`${API_BASE_URL}/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
+        body: JSON.stringify(credentials)
       });
       if (res.ok) {
         const user = await res.json();
@@ -86,11 +328,18 @@ export const api = {
         return user;
       }
     } catch (e) {
-      console.warn("Backend API offline, logging in locally:", e);
+      console.warn("Backend offline, validating login locally:", e);
     }
 
-    const currentUsers = getLocalUsers();
-    const found = currentUsers.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+    // Local validation fallback
+    const users = getLocalUsers();
+    const cleanUser = credentials.username.trim().toLowerCase();
+    const cleanPin = credentials.pin.trim();
+    const found = users.find(u =>
+      (u.username.toLowerCase() === cleanUser || u.id.toLowerCase() === cleanUser) &&
+      u.pin.trim() === cleanPin
+    );
+
     if (found) {
       setActiveUserId(found.id);
       return found;
@@ -98,37 +347,117 @@ export const api = {
     return null;
   },
 
-  async onboardUser(input: UserOnboardInput): Promise<UserProfile> {
+  async updateUser(userId: string, data: UserUpdateInput): Promise<UserProfile | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/onboard`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        const users = getLocalUsers().map(u => u.id === userId ? updated : u);
+        saveLocalUsers(users);
+        return updated;
+      }
+    } catch (e) {
+      console.warn("Backend offline, updating user locally:", e);
+    }
+
+    const users = getLocalUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      users[index] = { ...users[index], ...data };
+      saveLocalUsers(users);
+      return users[index];
+    }
+    return null;
+  },
+
+  getActiveUserId,
+  setActiveUserId,
+
+  logout() {
+    setActiveUserId(null);
+  },
+
+  // --- TRADES REGISTER CRUD ---
+
+  async getTrades(userId: string): Promise<Trade[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/trades?user_id=${userId}`);
+      if (res.ok) {
+        const trades = await res.json();
+        saveLocalTrades(userId, trades);
+        return trades;
+      }
+    } catch (e) {
+      console.warn("Backend offline, fetching local trades:", e);
+    }
+    return getLocalTrades(userId);
+  },
+
+  async createTrade(input: TradeInput): Promise<Trade> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/trades`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input)
       });
       if (res.ok) {
-        const user = await res.json();
-        setActiveUserId(user.id);
-        return user;
+        const trade = await res.json();
+        if (input.user_id) {
+          const current = getLocalTrades(input.user_id);
+          saveLocalTrades(input.user_id, [trade, ...current]);
+        }
+        return trade;
       }
     } catch (e) {
-      console.warn("Backend API offline, onboarding locally:", e);
+      console.warn("Backend offline, creating trade locally:", e);
     }
 
-    const currentUsers = getLocalUsers();
-    const newUser: UserProfile = {
-      id: `trader_${Date.now()}`,
-      ...input,
+    // Local trade creation
+    const userId = input.user_id || "trader_1";
+    const action = input.action.toUpperCase();
+    const pts = input.points !== undefined && input.points !== null
+      ? Number(input.points)
+      : (action === "BUY" ? Number((input.exit_price - input.entry_price).toFixed(2)) : Number((input.entry_price - input.exit_price).toFixed(2)));
+    const grossPnl = pts * input.quantity;
+    const netPnl = Number((grossPnl - (input.fees || 0)).toFixed(2));
+    const pnlPct = input.entry_price > 0 ? Number(((pts / input.entry_price) * 100).toFixed(2)) : 0;
+    const status = netPnl > 0.05 ? "WIN" : (netPnl < -0.05 ? "LOSS" : "BREAKEVEN");
+
+    const newTrade: Trade = {
+      id: `local_trade_${Date.now()}`,
+      user_id: userId,
+      date: input.date,
+      time: input.time,
+      symbol: input.symbol,
+      instrument_type: input.instrument_type,
+      action: input.action,
+      quantity: input.quantity,
+      entry_price: input.entry_price,
+      exit_price: input.exit_price,
+      points: pts,
+      stop_loss: input.stop_loss,
+      take_profit: input.take_profit,
+      fees: input.fees || 0,
+      net_pnl: netPnl,
+      pnl_percent: pnlPct,
+      status,
+      strategy: input.strategy || "My Strategy",
+      notes: input.notes || "",
       created_at: new Date().toISOString()
     };
-    const updated = [newUser, ...currentUsers.filter(u => u.email !== newUser.email)];
-    saveLocalUsers(updated);
-    setActiveUserId(newUser.id);
-    return newUser;
+
+    const current = getLocalTrades(userId);
+    saveLocalTrades(userId, [newTrade, ...current]);
+    return newTrade;
   },
 
-  async updateUserProfile(userId: string, input: UserUpdateInput): Promise<UserProfile | null> {
+  async updateTrade(tradeId: string, input: Partial<TradeInput>): Promise<Trade | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      const res = await fetch(`${API_BASE_URL}/trades/${tradeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input)
@@ -137,277 +466,90 @@ export const api = {
         return await res.json();
       }
     } catch (e) {
-      console.warn("Backend API offline, updating user profile locally:", e);
+      console.warn("Backend offline, updating trade locally:", e);
     }
 
-    const currentUsers = getLocalUsers();
-    const index = currentUsers.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      const updated = { ...currentUsers[index], ...input };
-      currentUsers[index] = updated;
-      saveLocalUsers(currentUsers);
-      return updated;
+    if (input.user_id) {
+      const current = getLocalTrades(input.user_id);
+      const idx = current.findIndex(t => t.id === tradeId);
+      if (idx !== -1) {
+        const merged = { ...current[idx], ...input };
+        const action = merged.action.toUpperCase();
+        const pts = input.points !== undefined && input.points !== null
+          ? Number(input.points)
+          : (action === "BUY" ? Number((merged.exit_price - merged.entry_price).toFixed(2)) : Number((merged.entry_price - merged.exit_price).toFixed(2)));
+        merged.points = pts;
+        merged.net_pnl = Number(((pts * merged.quantity) - (merged.fees || 0)).toFixed(2));
+        merged.status = merged.net_pnl > 0.05 ? "WIN" : (merged.net_pnl < -0.05 ? "LOSS" : "BREAKEVEN");
+        current[idx] = merged as Trade;
+        saveLocalTrades(input.user_id, current);
+        return merged as Trade;
+      }
     }
     return null;
   },
 
-  getActiveUserId,
-  setActiveUserId,
-
-  // --- TRADES CRUD (USER SCOPED) ---
-
-  async getTrades(userId: string): Promise<Trade[]> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/trades?user_id=${userId}`);
-      if (res.ok) {
-        const data = await res.json();
-        saveLocalTrades(userId, data);
-        return data;
-      }
-    } catch (e) {
-      console.warn("Backend API offline, loading local trades:", e);
-    }
-    return getLocalTrades(userId);
-  },
-
-  async createTrade(tradeInput: TradeInput): Promise<Trade> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/trades`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(tradeInput)
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn("Backend API offline, saving trade locally:", e);
-    }
-
-    const qty = tradeInput.quantity;
-    const entry = tradeInput.entry_price;
-    const exit = tradeInput.exit_price;
-    const gross = tradeInput.action === "BUY" ? (exit - entry) * qty : (entry - exit) * qty;
-    const net = gross - tradeInput.fees;
-    const pnlPct = (entry * qty) > 0 ? (net / (entry * qty)) * 100 : 0;
-
-    const risk = tradeInput.stop_loss ? Math.abs(entry - tradeInput.stop_loss) * qty : (entry * qty * 0.01);
-    const rMult = risk > 0 ? net / risk : 0;
-
-    const targetUserId = tradeInput.user_id || "trader_1";
-    const newTrade: Trade = {
-      id: `trade-${Date.now()}`,
-      ...tradeInput,
-      user_id: targetUserId,
-      net_pnl: Math.round(net * 100) / 100,
-      pnl_percent: Math.round(pnlPct * 100) / 100,
-      r_multiple: Math.round(rMult * 100) / 100,
-      status: net > 0.5 ? "WIN" : net < -0.5 ? "LOSS" : "BREAKEVEN",
-      created_at: new Date().toISOString()
-    };
-
-    const current = getLocalTrades(targetUserId);
-    const updated = [newTrade, ...current];
-    saveLocalTrades(targetUserId, updated);
-    return newTrade;
-  },
-
-  async deleteTrade(userId: string, tradeId: string): Promise<boolean> {
+  async deleteTrade(tradeId: string, userId?: string): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE_URL}/trades/${tradeId}`, { method: "DELETE" });
-      if (res.ok) return true;
+      if (res.ok) {
+        if (userId) {
+          const current = getLocalTrades(userId).filter(t => t.id !== tradeId);
+          saveLocalTrades(userId, current);
+        }
+        return true;
+      }
     } catch (e) {
-      console.warn("Backend API offline, deleting locally:", e);
+      console.warn("Backend offline, deleting trade locally:", e);
     }
 
-    const current = getLocalTrades(userId);
-    const filtered = current.filter(t => t.id !== tradeId);
-    saveLocalTrades(userId, filtered);
+    if (userId) {
+      const current = getLocalTrades(userId).filter(t => t.id !== tradeId);
+      saveLocalTrades(userId, current);
+      return true;
+    }
+    return false;
+  },
+
+  async clearTrades(userId: string): Promise<boolean> {
+    try {
+      await fetch(`${API_BASE_URL}/trades/clear?user_id=${userId}`, { method: "POST" });
+    } catch (e) {
+      console.warn("Backend offline, clearing trades locally:", e);
+    }
+    saveLocalTrades(userId, []);
     return true;
   },
 
-  async clearUserTrades(userId: string): Promise<Trade[]> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/trades/clear?user_id=${userId}`, { method: "POST" });
-      if (res.ok) {
-        saveLocalTrades(userId, []);
-        return [];
-      }
-    } catch (e) {
-      console.warn("Backend API offline, clearing local user trades:", e);
-    }
-    saveLocalTrades(userId, []);
-    return [];
-  },
+  // --- ANALYTICS & DASHBOARD (DAILY, WEEKLY, MONTHLY, QUARTERLY, HALF-YEARLY, ANNUALLY) ---
 
-  // --- ANALYTICS (USER SCOPED) ---
-
-  async getAnalytics(userId: string, timeframe: TimeframeFilter = "monthly"): Promise<PerformanceReport> {
+  async getAnalytics(userId: string, timeframe: TimeframeFilter): Promise<PerformanceReport> {
     try {
       const res = await fetch(`${API_BASE_URL}/analytics?user_id=${userId}&timeframe=${timeframe}`);
       if (res.ok) {
         return await res.json();
       }
     } catch (e) {
-      console.warn("Backend API offline, computing user analytics client-side:", e);
+      console.warn("Backend offline, computing analytics locally:", e);
     }
 
-    const trades = getLocalTrades(userId);
-    const totalTrades = trades.length;
-    const wins = trades.filter(t => t.status === "WIN");
-    const losses = trades.filter(t => t.status === "LOSS");
-    const netPnl = trades.reduce((acc, t) => acc + t.net_pnl, 0);
-
-    const winPnl = wins.reduce((acc, t) => acc + t.net_pnl, 0);
-    const lossPnl = Math.abs(losses.reduce((acc, t) => acc + t.net_pnl, 0));
-
-    const winRate = totalTrades > 0 ? (wins.length / totalTrades) * 100 : 0;
-    const profitFactor = lossPnl > 0 ? winPnl / lossPnl : (winPnl > 0 ? winPnl : 0);
-    const avgWin = wins.length > 0 ? winPnl / wins.length : 0;
-    const avgLoss = losses.length > 0 ? lossPnl / losses.length : 0;
-    const rr = avgLoss > 0 ? avgWin / avgLoss : avgWin;
-
-    const sorted = [...trades].sort((a, b) => a.date.localeCompare(b.date));
-    let cum = 0;
-    const equityCurve = sorted.map(t => {
-      cum += t.net_pnl;
-      return {
-        date: t.date,
-        pnl: t.net_pnl,
-        cumulative_pnl: Math.round(cum * 100) / 100,
-        trades_count: 1
-      };
-    });
-
-    const mistakesMap: Record<string, { count: number; total: number }> = {};
-    losses.forEach(t => {
-      if (t.mistake_tag && t.mistake_tag !== "None - Followed Plan") {
-        const key = t.mistake_tag;
-        if (!mistakesMap[key]) mistakesMap[key] = { count: 0, total: 0 };
-        mistakesMap[key].count += 1;
-        mistakesMap[key].total += Math.abs(t.net_pnl);
-      }
-    });
-
-    const mistakeStats = Object.keys(mistakesMap).map(k => ({
-      mistake: k,
-      count: mistakesMap[k].count,
-      total_loss: Math.round(mistakesMap[k].total * 100) / 100,
-      percentage_of_losses: lossPnl > 0 ? Math.round((mistakesMap[k].total / lossPnl) * 100) : 0
-    })).sort((a, b) => b.total_loss - a.total_loss);
-
-    return {
-      user_id: userId,
-      timeframe,
-      metrics: {
-        net_pnl: Math.round(netPnl * 100) / 100,
-        total_trades: totalTrades,
-        winning_trades: wins.length,
-        losing_trades: losses.length,
-        breakeven_trades: totalTrades - wins.length - losses.length,
-        win_rate: Math.round(winRate * 10) / 10,
-        profit_factor: Math.round(profitFactor * 100) / 100,
-        avg_win: Math.round(avgWin * 100) / 100,
-        avg_loss: Math.round(avgLoss * 100) / 100,
-        risk_reward_ratio: Math.round(rr * 100) / 100,
-        max_drawdown: 0,
-        max_drawdown_percent: 0,
-        expectancy: Math.round(((winRate / 100) * avgWin - ((100 - winRate) / 100) * avgLoss) * 100) / 100,
-        best_trade_pnl: trades.length > 0 ? Math.max(...trades.map(t => t.net_pnl)) : 0,
-        worst_trade_pnl: trades.length > 0 ? Math.min(...trades.map(t => t.net_pnl)) : 0,
-        total_fees: trades.reduce((acc, t) => acc + t.fees, 0)
-      },
-      equity_curve: equityCurve,
-      timeframe_breakdown: [],
-      mistake_analysis: mistakeStats,
-      top_assets: [],
-      top_setups: []
-    };
+    const trades = await this.getTrades(userId);
+    return computeClientAnalytics(trades, timeframe);
   },
 
-  async runDiagnostic(userId: string, trades?: Trade[]): Promise<DiagnosticResponse> {
+  async compareTraders(): Promise<any[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/ai/diagnose`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, trades })
-      });
+      const res = await fetch(`${API_BASE_URL}/analytics/compare`);
       if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn("Backend API offline, running user diagnostic locally:", e);
+    } catch {}
+
+    const users = await this.getUsers();
+    const result = [];
+    for (const u of users) {
+      const trades = await this.getTrades(u.id);
+      const rep = computeClientAnalytics(trades, "monthly");
+      result.push({ trader: u, metrics: rep.metrics, total_trades: trades.length });
     }
-
-    const currentTrades = trades || getLocalTrades(userId);
-    if (!currentTrades || currentTrades.length === 0) {
-      return {
-        user_id: userId,
-        health_score: 100,
-        summary: "Fresh Trader Portfolio. Log your first trade entry!",
-        top_mistakes: [],
-        rules: [
-          {
-            title: "Log Daily Execution",
-            description: "Consistency begins with accurate trade tracking.",
-            severity: "Low",
-            action_item: "Log entry price, stop loss, and setup tag after every trade."
-          }
-        ],
-        recommendations: [
-          "Log your daily trades to unlock AI mistake diagnostics and equity analytics."
-        ]
-      };
-    }
-
-    return {
-      user_id: userId,
-      health_score: 82,
-      summary: `Analyzed ${currentTrades.length} trade entries for your profile.`,
-      top_mistakes: [],
-      rules: [],
-      recommendations: ["Maintain execution discipline."]
-    };
-  },
-
-  async simulateStrategy(userId: string, strategyName: string, riskPct: number, targetRR: number): Promise<StrategySimResult> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/ai/strategy-sim`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, strategy_name: strategyName, risk_per_trade_percent: riskPct, take_profit_rr: targetRR })
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn("Backend API offline, simulating strategy locally:", e);
-    }
-
-    return {
-      strategy_name: strategyName,
-      simulated_net_pnl: 0,
-      simulated_win_rate: 60.0,
-      simulated_profit_factor: 2.0,
-      simulated_drawdown: 5.0,
-      comparison_vs_actual_pnl: 0,
-      trade_insights: [
-        `Simulating '${strategyName}' with ${riskPct}% risk & ${targetRR}:1 R:R target.`
-      ]
-    };
-  },
-
-  async askAICopilot(userId: string, messages: AIChatMessage[]): Promise<AIChatResponse> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/ai/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, messages })
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn("Backend API offline, answering AI chat locally:", e);
-    }
-
-    return {
-      reply: "### 🚀 AI Trading Co-pilot\n\nAsk me any question about Smart Money Concepts (SMC), Order Blocks, Option Greeks, Risk Management, or analyzing your logged trades!",
-      suggested_followups: ["Explain SMC Order Blocks", "How to calculate 1% position size?", "Option Greeks explained"]
-    };
+    return result;
   }
 };

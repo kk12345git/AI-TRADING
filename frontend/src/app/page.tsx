@@ -6,54 +6,45 @@ import { MetricsOverview } from "../components/MetricsOverview";
 import { AnalyticsCharts } from "../components/AnalyticsCharts";
 import { TradeJournalTable } from "../components/TradeJournalTable";
 import { TradeLoggerModal } from "../components/TradeLoggerModal";
-import { MistakeDiagnostic } from "../components/MistakeDiagnostic";
-import { AIStrategyHub } from "../components/AIStrategyHub";
-import { AICopilotChat } from "../components/AICopilotChat";
-import { UserLoginModal } from "../components/UserLoginModal";
-import { UserOnboardingView } from "../components/UserOnboardingView";
 import { UserProfileSettingsModal } from "../components/UserProfileSettingsModal";
-import { MobileBottomNav } from "../components/MobileBottomNav";
+import { TraderComparisonView } from "../components/TraderComparisonView";
+import { AuthPortal } from "../components/AuthPortal";
 
 import { api } from "../services/api";
 import {
   Trade, TradeInput, PerformanceReport, TimeframeFilter,
-  CurrencySymbol, UserProfile, UserOnboardInput, UserUpdateInput,
-  DiagnosticResponse, StrategySimResult, AIChatMessage
+  CurrencySymbol, UserProfile, UserLoginInput, UserUpdateInput
 } from "../types/portfolio";
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
-  const [currency, setCurrency] = useState<CurrencySymbol>("$");
   const [timeframe, setTimeframe] = useState<TimeframeFilter>("monthly");
 
   const [traders, setTraders] = useState<UserProfile[]>([]);
   const [activeTrader, setActiveTrader] = useState<UserProfile | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const [trades, setTrades] = useState<Trade[]>([]);
   const [report, setReport] = useState<PerformanceReport | null>(null);
-  const [diagnostic, setDiagnostic] = useState<DiagnosticResponse | null>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
-  const [isTraderModalOpen, setIsTraderModalOpen] = useState<boolean>(false);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Initial Load: check traders list and active trader profile
+  // Initialize App: load traders list and check if an active trader session exists
   const initApp = async () => {
     setLoading(true);
     try {
-      const fetchedUsers = await api.getUsers();
-      setTraders(fetchedUsers);
+      const fetchedTraders = await api.getUsers();
+      setTraders(fetchedTraders);
 
       const activeId = api.getActiveUserId();
       if (activeId) {
-        const found = fetchedUsers.find(u => u.id === activeId);
+        const found = fetchedTraders.find(u => u.id === activeId);
         if (found) {
           setActiveTrader(found);
-          setCurrency(found.base_currency);
-        } else if (fetchedUsers.length > 0) {
-          setActiveTrader(fetchedUsers[0]);
-          setCurrency(fetchedUsers[0].base_currency);
+          setIsAuthenticated(true);
         }
       }
     } catch (e) {
@@ -63,6 +54,7 @@ export default function HomePage() {
     }
   };
 
+  // Load Trader's trades and periodic analytics report
   const loadTraderData = async (user: UserProfile, tf: TimeframeFilter) => {
     setLoading(true);
     try {
@@ -71,9 +63,6 @@ export default function HomePage() {
 
       const fetchedReport = await api.getAnalytics(user.id, tf);
       setReport(fetchedReport);
-
-      const fetchedDiag = await api.runDiagnostic(user.id, fetchedTrades);
-      setDiagnostic(fetchedDiag);
     } catch (e) {
       console.error("Error loading trader data:", e);
     } finally {
@@ -86,239 +75,191 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (activeTrader) {
+    if (activeTrader && isAuthenticated) {
       loadTraderData(activeTrader, timeframe);
     }
-  }, [activeTrader, timeframe]);
+  }, [activeTrader, isAuthenticated, timeframe]);
 
-  // Auth / Login / Onboard Actions
-  const handleLogin = async (email: string): Promise<boolean> => {
-    const user = await api.loginUser(email);
-    if (user) {
-      setActiveTrader(user);
-      setCurrency(user.base_currency);
-      const allUsers = await api.getUsers();
-      setTraders(allUsers);
-      return true;
-    }
-    return false;
-  };
-
-  const handleOnboard = async (input: UserOnboardInput) => {
-    const user = await api.onboardUser(input);
-    setActiveTrader(user);
-    setCurrency(user.base_currency);
-    const allUsers = await api.getUsers();
-    setTraders(allUsers);
-  };
-
-  const handleUpdateProfile = async (input: UserUpdateInput) => {
-    if (!activeTrader) return;
-    const updated = await api.updateUserProfile(activeTrader.id, input);
-    if (updated) {
-      setActiveTrader(updated);
-      setCurrency(updated.base_currency);
-      const allUsers = await api.getUsers();
-      setTraders(allUsers);
-    }
-  };
-
-  const handleSelectTrader = (trader: UserProfile) => {
+  // Auth Handlers
+  const handleAuthenticate = (trader: UserProfile) => {
     api.setActiveUserId(trader.id);
     setActiveTrader(trader);
-    setCurrency(trader.base_currency);
+    setIsAuthenticated(true);
+  };
+
+  const handleLoginAttempt = async (creds: UserLoginInput): Promise<UserProfile | null> => {
+    return await api.loginUser(creds);
   };
 
   const handleLogout = () => {
-    api.setActiveUserId(null);
+    api.logout();
+    setIsAuthenticated(false);
     setActiveTrader(null);
-    setTrades([]);
-    setReport(null);
-    setDiagnostic(null);
   };
 
-  // Trade Actions
-  const handleCreateTrade = async (input: TradeInput) => {
+  const handleSwitchTrader = (targetTrader: UserProfile) => {
+    api.setActiveUserId(targetTrader.id);
+    setActiveTrader(targetTrader);
+  };
+
+  // Trade CRUD Handlers
+  const handleSaveTrade = async (input: TradeInput, editId?: string) => {
     if (!activeTrader) return;
     input.user_id = activeTrader.id;
-    const created = await api.createTrade(input);
-    const updatedTrades = [created, ...trades];
-    setTrades(updatedTrades);
 
-    const newReport = await api.getAnalytics(activeTrader.id, timeframe);
-    setReport(newReport);
+    if (editId) {
+      await api.updateTrade(editId, input);
+    } else {
+      await api.createTrade(input);
+    }
 
-    const newDiag = await api.runDiagnostic(activeTrader.id, updatedTrades);
-    setDiagnostic(newDiag);
+    setEditingTrade(null);
+    await loadTraderData(activeTrader, timeframe);
   };
 
-  const handleDeleteTrade = async (id: string) => {
+  const handleEditTrade = (trade: Trade) => {
+    setEditingTrade(trade);
+    setIsAddModalOpen(true);
+  };
+
+  const handleDeleteTrade = async (tradeId: string) => {
     if (!activeTrader) return;
-    await api.deleteTrade(activeTrader.id, id);
-    const updatedTrades = trades.filter((t) => t.id !== id);
-    setTrades(updatedTrades);
-
-    const newReport = await api.getAnalytics(activeTrader.id, timeframe);
-    setReport(newReport);
-
-    const newDiag = await api.runDiagnostic(activeTrader.id, updatedTrades);
-    setDiagnostic(newDiag);
+    if (window.confirm("Delete this trade from your register?")) {
+      await api.deleteTrade(tradeId, activeTrader.id);
+      await loadTraderData(activeTrader, timeframe);
+    }
   };
 
-  const handleRefreshDiagnostic = async () => {
+  const handleClearTrades = async () => {
     if (!activeTrader) return;
-    const newDiag = await api.runDiagnostic(activeTrader.id, trades);
-    setDiagnostic(newDiag);
+    await api.clearTrades(activeTrader.id);
+    await loadTraderData(activeTrader, timeframe);
   };
 
-  const handleSimulateStrategy = async (name: string, riskPct: number, targetRR: number): Promise<StrategySimResult> => {
-    if (!activeTrader) throw new Error("No active trader");
-    return await api.simulateStrategy(activeTrader.id, name, riskPct, targetRR);
+  const handleUpdateProfile = async (updated: UserUpdateInput) => {
+    if (!activeTrader) return;
+    const res = await api.updateUser(activeTrader.id, updated);
+    if (res) {
+      setActiveTrader(res);
+      const all = await api.getUsers();
+      setTraders(all);
+    }
   };
 
-  const handleSendAIChat = async (messages: AIChatMessage[]) => {
-    if (!activeTrader) throw new Error("No active trader");
-    return await api.askAICopilot(activeTrader.id, messages);
-  };
-
-  // Render Login & Onboarding View if no active trader profile
-  if (!activeTrader && !loading) {
-    return <UserOnboardingView onLogin={handleLogin} onOnboard={handleOnboard} />;
+  // 1. If not authenticated, ALWAYS show 2-Trader Authentication Portal
+  if (!isAuthenticated || !activeTrader) {
+    return (
+      <AuthPortal
+        traders={traders}
+        onAuthenticate={handleAuthenticate}
+        onLoginAttempt={handleLoginAttempt}
+      />
+    );
   }
 
+  const currency = activeTrader.base_currency || "₹";
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 pb-20 md:pb-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       
-      {/* Navigation Header */}
-      {activeTrader && (
-        <HeaderNav
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          currency={currency}
-          setCurrency={setCurrency}
-          activeTrader={activeTrader}
-          onOpenTraderModal={() => setIsTraderModalOpen(true)}
-          onOpenProfileSettings={() => setIsSettingsModalOpen(true)}
-          onOpenAddModal={() => setIsAddModalOpen(true)}
-          onLogout={handleLogout}
-          totalTrades={trades.length}
-        />
-      )}
+      {/* Header Navigation with Active Trader info & Switcher */}
+      <HeaderNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currency={currency}
+        setCurrency={(c) => handleUpdateProfile({ base_currency: c })}
+        activeTrader={activeTrader}
+        allTraders={traders}
+        onSwitchTrader={handleSwitchTrader}
+        onOpenProfileSettings={() => setIsSettingsModalOpen(true)}
+        onOpenAddModal={() => {
+          setEditingTrade(null);
+          setIsAddModalOpen(true);
+        }}
+        onLogout={handleLogout}
+        totalTrades={trades.length}
+      />
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        {loading && !report ? (
-          <div className="h-96 flex flex-col items-center justify-center space-y-3">
-            <div className="w-10 h-10 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
-            <p className="text-xs text-slate-400 font-mono">Loading Trader Portfolio Matrix...</p>
+        {/* TAB 1: PERIODIC DASHBOARD */}
+        {activeTab === "dashboard" && (
+          <div className="space-y-8">
+            {/* KPI Cards Overview */}
+            {report && (
+              <MetricsOverview
+                metrics={report.metrics}
+                currency={currency}
+                accountCapital={activeTrader.account_capital}
+              />
+            )}
+
+            {/* Periodic Performance Analytics (Weekly, Monthly, Quarterly, Half-Yearly, Annually) */}
+            <AnalyticsCharts
+              report={report}
+              currentTimeframe={timeframe}
+              onTimeframeChange={(tf) => setTimeframe(tf)}
+              currency={currency}
+            />
           </div>
-        ) : (
-          <>
-            {/* Tab 1: Dashboard & Performance Analytics */}
-            {activeTab === "dashboard" && report && (
-              <div className="space-y-8">
-                <MetricsOverview
-                  metrics={report.metrics}
-                  timeframe={timeframe}
-                  setTimeframe={setTimeframe}
-                  currency={currency}
-                />
-                <AnalyticsCharts report={report} currency={currency} />
-              </div>
-            )}
+        )}
 
-            {/* Tab 2: Trade Journal */}
-            {activeTab === "journal" && (
-              <TradeJournalTable
-                trades={trades}
-                onDeleteTrade={handleDeleteTrade}
-                currency={currency}
-              />
-            )}
+        {/* TAB 2: TRADE REGISTER (DAILY POINTS & P&L GROUPING) */}
+        {activeTab === "register" && (
+          <TradeJournalTable
+            trades={trades}
+            dailyGroups={report?.daily_groups || []}
+            currency={currency}
+            onOpenAddModal={() => {
+              setEditingTrade(null);
+              setIsAddModalOpen(true);
+            }}
+            onEditTrade={handleEditTrade}
+            onDeleteTrade={handleDeleteTrade}
+            onClearTrades={handleClearTrades}
+          />
+        )}
 
-            {/* Tab 3: AI Mistake Solver & Diagnostic */}
-            {activeTab === "diagnostics" && (
-              <MistakeDiagnostic
-                diagnostic={diagnostic}
-                onRefreshDiagnostic={handleRefreshDiagnostic}
-                currency={currency}
-              />
-            )}
-
-            {/* Tab 4: AI Strategy Hub & Backtest */}
-            {activeTab === "strategy" && (
-              <AIStrategyHub
-                onSimulateStrategy={handleSimulateStrategy}
-                currency={currency}
-              />
-            )}
-
-            {/* Tab 5: AI Co-pilot Chat */}
-            {activeTab === "copilot" && (
-              <AICopilotChat
-                onSendMessage={handleSendAIChat}
-                currency={currency}
-              />
-            )}
-          </>
+        {/* TAB 3: DUAL TRADERS COMPARISON */}
+        {activeTab === "comparison" && (
+          <TraderComparisonView
+            traders={traders}
+            currency={currency}
+            onSelectTrader={(t) => {
+              handleSwitchTrader(t);
+              setActiveTab("register");
+            }}
+          />
         )}
 
       </main>
 
-      {/* Log New Trade Modal */}
+      {/* Footer */}
+      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">
+        <p>Trading Register & Periodic Performance Analytics System • Authenticated Trader: <span className="text-slate-400 font-semibold">{activeTrader.name}</span></p>
+      </footer>
+
+      {/* Modals */}
       <TradeLoggerModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmit={handleCreateTrade}
-        currency={currency}
-      />
-
-      {/* User Login & Account Switcher Modal */}
-      <UserLoginModal
-        isOpen={isTraderModalOpen}
-        onClose={() => setIsTraderModalOpen(false)}
-        traders={traders}
-        activeTrader={activeTrader!}
-        onSelectTrader={handleSelectTrader}
-        onCreateTrader={async (email, name, c) => {
-          await handleOnboard({
-            email,
-            name,
-            avatar: "⚡",
-            base_currency: c,
-            trading_style: "Day Trader",
-            primary_market: "Stocks",
-            account_capital: 10000,
-            risk_per_trade_pct: 1.0,
-            trading_goals: "Consistency & Risk Discipline"
-          });
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingTrade(null);
         }}
+        onSaveTrade={handleSaveTrade}
+        editingTrade={editingTrade}
+        currency={currency}
+        activeUserId={activeTrader.id}
       />
 
-      {/* User Profile Settings Modal */}
-      {activeTrader && (
-        <UserProfileSettingsModal
-          isOpen={isSettingsModalOpen}
-          onClose={() => setIsSettingsModalOpen(false)}
-          user={activeTrader}
-          onUpdateProfile={handleUpdateProfile}
-        />
-      )}
-
-      {/* Mobile Bottom Navigation Bar */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
-        onOpenProfileModal={() => setIsSettingsModalOpen(true)}
-        totalTrades={trades.length}
+      <UserProfileSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        user={activeTrader}
+        onUpdateProfile={handleUpdateProfile}
       />
 
-      {/* Footer */}
-      <footer className="hidden md:block border-t border-slate-900 py-6 text-center text-xs text-slate-500">
-        <p>TradeMatrix AI • Multi-Trader Portfolio Manager & AI Trade Co-pilot</p>
-      </footer>
     </div>
   );
 }
