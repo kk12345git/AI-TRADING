@@ -3,7 +3,7 @@
 import React from "react";
 import {
   TrendingUp, Plus, Users, ShieldCheck, BarChart2, BookOpen,
-  Settings, LogOut, Lock, ArrowLeftRight, Wallet
+  Settings, LogOut, Lock, ArrowLeftRight, Wallet, Calculator
 } from "lucide-react";
 import { CurrencySymbol, UserProfile } from "../types/portfolio";
 
@@ -17,6 +17,7 @@ interface HeaderNavProps {
   onSwitchTrader: (trader: UserProfile) => void;
   onOpenProfileSettings: () => void;
   onOpenAddModal: () => void;
+  onOpenCalculator?: () => void;
   onLogout: () => void;
   totalTrades: number;
   netPnl?: number;
@@ -32,6 +33,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onSwitchTrader,
   onOpenProfileSettings,
   onOpenAddModal,
+  onOpenCalculator,
   onLogout,
   totalTrades,
   netPnl = 0
@@ -49,7 +51,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800 shadow-2xl">
+    <header className="sticky top-0 z-40 bg-[#07080B]/90 backdrop-blur-xl border-b border-white/[0.07] shadow-2xl">
       <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
         
         {/* Main Bar */}
@@ -60,28 +62,28 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer select-none"
             onClick={() => setActiveTab("register")}
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 p-[2px] shadow-lg shadow-cyan-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-gold-500 via-amber-400 to-emerald-400 p-[1.5px] shadow-sm">
+              <div className="w-full h-full bg-[#08090C] rounded-[14px] flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-gold-400" />
               </div>
             </div>
             <div>
-              <div className="flex items-center space-x-1.5">
-                <h1 className="text-base sm:text-xl font-black tracking-tight text-white">
-                  TradeRegister
+              <div className="flex items-center space-x-2">
+                <h1 className="text-base sm:text-lg font-black tracking-tight text-white font-sans">
+                  TradeMatrix<span className="text-gold-400 font-serif italic ml-0.5">Terminal</span>
                 </h1>
-                <span className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
+                <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase bg-gold-500/10 text-gold-400 border border-gold-500/25 rounded-full tracking-wider">
                   {activeTrader.name}
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium hidden sm:block">
-                Points & Daily Profit/Loss Journal
+              <p className="text-[10px] sm:text-[11px] text-zinc-400 font-medium hidden sm:block">
+                Institutional Lot Sizing & Performance Register
               </p>
             </div>
           </div>
 
           {/* Center Tabs Navigation (Desktop) */}
-          <nav className="hidden md:flex items-center space-x-1 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
+          <nav className="hidden md:flex items-center space-x-1 bg-[#0F121C] p-1.5 rounded-2xl border border-white/[0.06] shadow-sm">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -89,31 +91,43 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                     isActive
-                      ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-black"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      ? "bg-white/[0.1] text-white border border-white/[0.12] shadow-sm font-bold"
+                      : "text-zinc-400 hover:text-white hover:bg-white/[0.03]"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? "text-gold-400" : "text-zinc-400"}`} />
                   <span>{item.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* Right Controls: Active Trader & Capital */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Right Controls */}
+          <div className="flex items-center space-x-2 sm:space-x-2.5">
             
+            {/* Real-time Lot Sizer & Calculator Shortcut Button */}
+            {onOpenCalculator && (
+              <button
+                onClick={onOpenCalculator}
+                title="Open Real-time Lot Size & Risk Calculator"
+                className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 bg-[#121622] hover:bg-[#181D2C] border border-gold-500/30 rounded-xl text-xs text-gold-300 transition-all active:scale-95 shadow-sm"
+              >
+                <Calculator className="w-3.5 h-3.5 text-gold-400" />
+                <span className="font-semibold">Lot Sizer</span>
+              </button>
+            )}
+
             {/* Quick Switch between Rakesh & Karthi */}
             {otherTrader && otherTrader.id !== activeTrader.id && (
               <button
                 onClick={() => onSwitchTrader(otherTrader)}
                 title={`Switch trader to ${otherTrader.name}`}
-                className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs text-slate-300 hover:text-white transition-all active:scale-95"
+                className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 bg-[#121622] hover:bg-[#181D2C] border border-white/[0.08] rounded-xl text-xs text-zinc-300 hover:text-white transition-all active:scale-95"
               >
-                <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Switch to {otherTrader.name}</span>
+                <ArrowLeftRight className="w-3.5 h-3.5 text-gold-400" />
+                <span className="text-[11px] font-medium">{otherTrader.name}</span>
               </button>
             )}
 
@@ -121,31 +135,31 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             <div
               onClick={onOpenProfileSettings}
               title="Click to view & edit trader profile"
-              className="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 bg-slate-900 hover:bg-slate-850 border border-cyan-500/40 rounded-2xl cursor-pointer transition-all shadow-md group"
+              className="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 bg-[#11141E] hover:bg-[#151926] border border-white/[0.08] hover:border-gold-500/40 rounded-2xl cursor-pointer transition-all shadow-luxe-sm group"
             >
-              <span className="text-lg sm:text-xl p-1 rounded-xl bg-slate-950 border border-slate-800">
+              <span className="text-base sm:text-lg p-1 rounded-xl bg-[#07080B] border border-white/[0.06]">
                 {activeTrader.avatar || "⚡"}
               </span>
               <div className="text-left">
-                <div className="text-[11px] sm:text-xs font-bold text-white leading-tight group-hover:text-cyan-400 transition-colors">
+                <div className="text-[11px] sm:text-xs font-semibold text-zinc-200 leading-tight group-hover:text-gold-400 transition-colors">
                   {activeTrader.name}
                 </div>
-                <div className={`text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-0.5 ${
+                <div className={`text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1 ${
                   isCapitalPositive ? "text-emerald-400" : "text-rose-400"
                 }`}>
-                  <Wallet className="w-3 h-3 text-cyan-400" />
+                  <Wallet className="w-2.5 h-2.5 text-zinc-500" />
                   {currentCapital >= 0 ? `${currency}${currentCapital.toLocaleString()}` : `-${currency}${Math.abs(currentCapital).toLocaleString()}`}
                 </div>
               </div>
-              <Settings className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-colors hidden sm:block ml-1" />
+              <Settings className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 transition-colors hidden sm:block ml-1" />
             </div>
 
-            {/* Take New Trade Button (Desktop) */}
+            {/* Log Trade Button (Desktop) */}
             <button
               onClick={onOpenAddModal}
-              className="hidden sm:flex px-3.5 sm:px-4 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 active:scale-[0.98] text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all items-center space-x-1.5"
+              className="hidden sm:flex px-3.5 sm:px-4 py-2 bg-gradient-to-r from-gold-500 to-amber-500 hover:brightness-110 active:scale-[0.98] text-black font-black rounded-xl text-xs shadow-md transition-all items-center space-x-1.5"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Log Trade</span>
             </button>
 
@@ -153,10 +167,10 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             <button
               onClick={onLogout}
               title="Lock application and logout"
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-900 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/30 text-slate-400 hover:text-rose-400 text-xs font-semibold transition-all flex items-center space-x-1.5"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#11141E] hover:bg-rose-950/30 border border-white/[0.06] hover:border-rose-500/30 text-zinc-400 hover:text-rose-400 text-xs font-semibold transition-all flex items-center space-x-1.5"
             >
               <Lock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Lock</span>
+              <span className="hidden sm:inline text-[11px]">Lock</span>
             </button>
 
           </div>

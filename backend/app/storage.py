@@ -6,6 +6,7 @@ from typing import List, Optional
 from app.models.trade import (
     Trade, TradeCreate, TradeUpdate, UserProfile, UserLoginRequest, UserUpdateRequest
 )
+from app.engine.instruments import calculate_trade_pnl, get_instrument_spec
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "trades_db.json")
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users_db.json")
@@ -154,10 +155,18 @@ class StorageManager:
         return None
 
     def calculate_trade_fields(self, trade_in: TradeCreate | TradeUpdate, existing_trade: Optional[Trade] = None):
+        symbol = trade_in.symbol if trade_in.symbol is not None else (existing_trade.symbol if existing_trade else "XAUUSD")
         action = (trade_in.action if trade_in.action is not None else (existing_trade.action if existing_trade else "BUY")).upper()
         entry = trade_in.entry_price if trade_in.entry_price is not None else (existing_trade.entry_price if existing_trade else 0.0)
         exit_p = trade_in.exit_price if trade_in.exit_price is not None else (existing_trade.exit_price if existing_trade else 0.0)
-        qty = trade_in.quantity if trade_in.quantity is not None else (existing_trade.quantity if existing_trade else 1.0)
+        # Use lots if supplied, else quantity
+        lots = trade_in.lots if getattr(trade_in, 'lots', None) is not None else (
+            trade_in.quantity if trade_in.quantity is not None else (
+                existing_trade.lots if existing_trade and existing_trade.lots is not None else (
+                    existing_trade.quantity if existing_trade else 1.0
+                )
+            )
+        )
         fees = trade_in.fees if trade_in.fees is not None else (existing_trade.fees if existing_trade else 0.0)
 
         # Points calculation
@@ -169,8 +178,8 @@ class StorageManager:
             else:
                 pts = round(entry - exit_p, 2)
 
-        gross_pnl = pts * qty
-        net_pnl = round(gross_pnl - fees, 2)
+        # Exact real-world contract & lot sizing calculation
+        gross_pnl, net_pnl, multiplier, contract_units = calculate_trade_pnl(symbol, lots, pts, fees)
         pnl_pct = round((pts / entry) * 100, 2) if entry > 0 else 0.0
 
         if net_pnl > 0.05:
@@ -180,19 +189,25 @@ class StorageManager:
         else:
             status = "BREAKEVEN"
 
-        return pts, net_pnl, pnl_pct, status
+        return pts, net_pnl, pnl_pct, status, multiplier, contract_units, lots
 
     def create_trade(self, trade_in: TradeCreate) -> Trade:
-        pts, net_pnl, pnl_pct, status = self.calculate_trade_fields(trade_in)
+        pts, net_pnl, pnl_pct, status, multiplier, contract_units, lots = self.calculate_trade_fields(trade_in)
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        trade_dict = trade_in.model_dump()
+        trade_dict["quantity"] = lots
+        trade_dict["lots"] = lots
+        trade_dict["point_multiplier"] = multiplier
+        trade_dict["contract_units"] = contract_units
+        trade_dict["points"] = pts
+        trade_dict["net_pnl"] = net_pnl
+        trade_dict["pnl_percent"] = pnl_pct
+        trade_dict["status"] = status
 
         trade = Trade(
             id=f"trade-{uuid.uuid4().hex[:8]}",
-            **trade_in.model_dump(),
-            points=pts,
-            net_pnl=net_pnl,
-            pnl_percent=pnl_pct,
-            status=status,
+            **trade_dict,
             created_at=now_str
         )
         self.trades.append(trade)
@@ -208,11 +223,15 @@ class StorageManager:
         for key, val in update_data.items():
             setattr(trade, key, val)
 
-        pts, net_pnl, pnl_pct, status = self.calculate_trade_fields(trade_update, existing_trade=trade)
+        pts, net_pnl, pnl_pct, status, multiplier, contract_units, lots = self.calculate_trade_fields(trade_update, existing_trade=trade)
         trade.points = pts
         trade.net_pnl = net_pnl
         trade.pnl_percent = pnl_pct
         trade.status = status
+        trade.lots = lots
+        trade.quantity = lots
+        trade.point_multiplier = multiplier
+        trade.contract_units = contract_units
 
         self._save_trades()
         return trade

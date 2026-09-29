@@ -3,6 +3,7 @@ import {
   UserProfile, UserLoginInput, UserUpdateInput,
   MetricsSummary, TimeframeAggregation, DailyTradeGroup, EquityPoint, StrategyStat
 } from "../types/portfolio";
+import { calculateRealTradePnl } from "../types/instruments";
 
 const API_BASE_URL = typeof window !== "undefined" && window.location.hostname !== "localhost"
   ? "/api"
@@ -458,8 +459,9 @@ export const api = {
     const pts = input.points !== undefined && input.points !== null
       ? Number(input.points)
       : (action === "BUY" ? Number((input.exit_price - input.entry_price).toFixed(2)) : Number((input.entry_price - input.exit_price).toFixed(2)));
-    const grossPnl = pts * input.quantity;
-    const netPnl = Number((grossPnl - (input.fees || 0)).toFixed(2));
+    
+    const lots = input.lots !== undefined && input.lots !== null ? Number(input.lots) : Number(input.quantity);
+    const { grossPnl, netPnl, multiplier, contractUnits } = calculateRealTradePnl(input.symbol, lots, pts, input.fees || 0);
     const pnlPct = input.entry_price > 0 ? Number(((pts / input.entry_price) * 100).toFixed(2)) : 0;
     const status = netPnl > 0.05 ? "WIN" : (netPnl < -0.05 ? "LOSS" : "BREAKEVEN");
 
@@ -471,7 +473,8 @@ export const api = {
       symbol: input.symbol,
       instrument_type: input.instrument_type,
       action: input.action,
-      quantity: input.quantity,
+      quantity: lots,
+      lots: lots,
       entry_price: input.entry_price,
       exit_price: input.exit_price,
       points: pts,
@@ -483,6 +486,8 @@ export const api = {
       status,
       strategy: input.strategy || "My Strategy",
       notes: input.notes || "",
+      point_multiplier: multiplier,
+      contract_units: contractUnits,
       created_at: new Date().toISOString()
     };
 
@@ -515,7 +520,13 @@ export const api = {
           ? Number(input.points)
           : (action === "BUY" ? Number((merged.exit_price - merged.entry_price).toFixed(2)) : Number((merged.entry_price - merged.exit_price).toFixed(2)));
         merged.points = pts;
-        merged.net_pnl = Number(((pts * merged.quantity) - (merged.fees || 0)).toFixed(2));
+        const lots = merged.lots !== undefined && merged.lots !== null ? Number(merged.lots) : Number(merged.quantity);
+        const { netPnl, multiplier, contractUnits } = calculateRealTradePnl(merged.symbol, lots, pts, merged.fees || 0);
+        merged.quantity = lots;
+        merged.lots = lots;
+        merged.net_pnl = netPnl;
+        merged.point_multiplier = multiplier;
+        merged.contract_units = contractUnits;
         merged.status = merged.net_pnl > 0.05 ? "WIN" : (merged.net_pnl < -0.05 ? "LOSS" : "BREAKEVEN");
         current[idx] = merged as Trade;
         saveLocalTrades(input.user_id, current);

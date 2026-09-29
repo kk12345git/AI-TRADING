@@ -31,10 +31,11 @@ class TradeBase(BaseModel):
     user_id: str
     date: str  # YYYY-MM-DD
     time: str = "09:30"
-    symbol: str  # XAUUSD, NASDAQ, NIFTY50, SENSEX
-    instrument_type: str = "OPTIONS"  # OPTIONS, FUTURES, EQUITY, FOREX, CRYPTO
+    symbol: str  # XAUUSD, NASDAQ, US30, SPX500, GER40, NIFTY50, BANKNIFTY, SENSEX, etc.
+    instrument_type: str = "OPTIONS"  # OPTIONS, FUTURES, EQUITY, FOREX, CRYPTO, COMMODITY, INDEX_CFD
     action: str = "BUY"  # BUY, SELL
-    quantity: float  # Lots or total shares
+    quantity: float  # Lots traded (or raw shares)
+    lots: Optional[float] = None  # Explicit lots (e.g. 0.01 for XAUUSD, 1 for NIFTY)
     entry_price: float
     exit_price: float
     points: Optional[float] = None  # Explicit points captured / lost
@@ -43,6 +44,8 @@ class TradeBase(BaseModel):
     fees: float = 0.0
     strategy: str = "My Custom Strategy"  # Personal strategy name
     notes: str = ""
+    point_multiplier: Optional[float] = None
+    contract_units: Optional[float] = None
 
 class TradeCreate(TradeBase):
     pass
@@ -54,6 +57,7 @@ class TradeUpdate(BaseModel):
     instrument_type: Optional[str] = None
     action: Optional[str] = None
     quantity: Optional[float] = None
+    lots: Optional[float] = None
     entry_price: Optional[float] = None
     exit_price: Optional[float] = None
     points: Optional[float] = None
@@ -62,6 +66,8 @@ class TradeUpdate(BaseModel):
     fees: Optional[float] = None
     strategy: Optional[str] = None
     notes: Optional[str] = None
+    point_multiplier: Optional[float] = None
+    contract_units: Optional[float] = None
 
 class Trade(TradeBase):
     id: str

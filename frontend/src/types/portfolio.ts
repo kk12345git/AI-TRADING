@@ -42,6 +42,7 @@ export interface Trade {
   instrument_type: InstrumentType;
   action: ActionType;
   quantity: number;
+  lots?: number;
   entry_price: number;
   exit_price: number;
   points: number;
@@ -53,6 +54,8 @@ export interface Trade {
   status: TradeStatus;
   strategy: string;
   notes: string;
+  point_multiplier?: number;
+  contract_units?: number;
   created_at: string;
 }
 
@@ -64,6 +67,7 @@ export interface TradeInput {
   instrument_type: InstrumentType;
   action: ActionType;
   quantity: number;
+  lots?: number;
   entry_price: number;
   exit_price: number;
   points?: number;
@@ -72,6 +76,8 @@ export interface TradeInput {
   fees: number;
   strategy: string;
   notes: string;
+  point_multiplier?: number;
+  contract_units?: number;
 }
 
 export interface MetricsSummary {

@@ -4,8 +4,11 @@ import React, { useState } from "react";
 import { Trade, DailyTradeGroup, CurrencySymbol } from "../types/portfolio";
 import {
   Calendar, Clock, TrendingUp, TrendingDown, Edit3, Trash2,
-  Plus, Search, Filter, Layers, Download, CheckCircle, AlertTriangle, ArrowRight
+  Plus, Search, Filter, Layers, Download, CheckCircle, AlertTriangle, ArrowRight,
+  Calculator, Sparkles
 } from "lucide-react";
+import { getInstrumentSpec } from "../types/instruments";
+import { LotSizeCalculatorModal } from "./LotSizeCalculatorModal";
 
 interface TradeJournalTableProps {
   trades: Trade[];
@@ -26,9 +29,10 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
   onDeleteTrade,
   onClearTrades
 }) => {
-  const [searchTerm, setSearchTerm] = useState<string>("" );
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [viewMode, setViewMode] = useState<"day_grouped" | "flat">("day_grouped");
+  const [isCalcOpen, setIsCalcOpen] = useState<boolean>(false);
 
   // Filtering
   const filteredTrades = trades.filter((t) => {
@@ -47,28 +51,34 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
   // Export to CSV
   const handleExportCSV = () => {
     if (trades.length === 0) return;
-    const headers = ["Date", "Time", "Symbol", "Type", "Action", "Qty", "Entry", "Exit", "Points", "Net PnL", "Status", "Strategy", "Notes"];
-    const rows = trades.map(t => [
-      t.date,
-      t.time,
-      `"${t.symbol}"`,
-      t.instrument_type,
-      t.action,
-      t.quantity,
-      t.entry_price,
-      t.exit_price,
-      t.points,
-      t.net_pnl,
-      t.status,
-      `"${t.strategy}"`,
-      `"${t.notes.replace(/"/g, '""')}"`
-    ]);
+    const headers = ["Date", "Time", "Symbol", "Type", "Action", "Lots", "Units", "Entry", "Exit", "Points", "Net PnL", "Status", "Strategy", "Notes"];
+    const rows = trades.map(t => {
+      const spec = getInstrumentSpec(t.symbol);
+      const lots = t.lots || t.quantity;
+      const units = t.contract_units || (lots * spec.contractSize);
+      return [
+        t.date,
+        t.time,
+        `"${t.symbol}"`,
+        t.instrument_type,
+        t.action,
+        lots,
+        units,
+        t.entry_price,
+        t.exit_price,
+        t.points,
+        t.net_pnl,
+        t.status,
+        `"${t.strategy}"`,
+        `"${t.notes.replace(/"/g, '""')}"`
+      ];
+    });
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `trade_register_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute("download", `tradematrix_register_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -81,27 +91,43 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
     <div className="space-y-5 pb-16 md:pb-6">
       
       {/* Top Action & Search Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl">
+      <div className="bg-[#0D1018] border border-white/[0.08] rounded-3xl p-4 sm:p-5 shadow-luxe">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 rounded-2xl bg-gold-500/10 text-gold-400 border border-gold-500/20 shadow-sm">
               <Layers className="w-5 h-5" />
             </span>
             <div>
-              <h2 className="text-lg sm:text-xl font-black text-white">Daily Trade Register</h2>
-              <p className="text-[11px] text-slate-400">
-                Log entries, exits, points captured, and profit/loss
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                  Daily Trade Register
+                </h2>
+                <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                  {trades.length} entries
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400">
+                Exact lot size pricing, point multiplier calculations, and journal
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Real-time Lot Sizer Button */}
+            <button
+              onClick={() => setIsCalcOpen(true)}
+              className="px-3 py-2 rounded-xl bg-gold-500/10 hover:bg-gold-500/20 text-gold-300 border border-gold-500/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+            >
+              <Calculator className="w-3.5 h-3.5 text-gold-400" />
+              <span>Lot Calculator</span>
+            </button>
+
             {/* View Mode Toggle (desktop only) */}
-            <div className="hidden sm:flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+            <div className="hidden sm:flex bg-[#07080B] p-1 rounded-xl border border-white/[0.06] text-xs font-semibold">
               <button
                 onClick={() => setViewMode("day_grouped")}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
-                  viewMode === "day_grouped" ? "bg-cyan-500 text-slate-950 font-bold shadow" : "text-slate-400 hover:text-white"
+                  viewMode === "day_grouped" ? "bg-white/[0.1] text-white font-bold shadow-sm" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 By Day
@@ -109,7 +135,7 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
               <button
                 onClick={() => setViewMode("flat")}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
-                  viewMode === "flat" ? "bg-cyan-500 text-slate-950 font-bold shadow" : "text-slate-400 hover:text-white"
+                  viewMode === "flat" ? "bg-white/[0.1] text-white font-bold shadow-sm" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 All List
@@ -120,49 +146,49 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
             <button
               onClick={handleExportCSV}
               disabled={trades.length === 0}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 border border-slate-700 disabled:opacity-50"
+              className="px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 border border-white/[0.07] disabled:opacity-40"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export</span> CSV
+              <span className="hidden sm:inline">Export</span>
             </button>
 
-            {/* Take New Trade */}
+            {/* Log Trade Button */}
             <button
               onClick={onOpenAddModal}
-              className="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 active:scale-98 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-gold-500 to-amber-500 hover:brightness-110 active:scale-98 text-black font-black text-xs shadow-md transition-all flex items-center gap-1.5"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Log Trade</span>
             </button>
           </div>
         </div>
 
         {/* Quick Search & Outcome Filters */}
-        <div className="mt-3.5 pt-3.5 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        <div className="mt-3.5 pt-3.5 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search symbol, strategy, date..."
-              className="w-full bg-slate-950 border border-slate-800 text-white placeholder-slate-500 pl-8 pr-3 py-2 rounded-xl text-xs focus:border-cyan-500 focus:outline-none"
+              placeholder="Search symbol, strategy, date (e.g. XAUUSD)..."
+              className="w-full bg-[#07080B] border border-white/[0.08] text-white placeholder-zinc-500 pl-8 pr-3 py-2 rounded-xl text-xs focus:border-gold-500/50 focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto pb-0.5">
+          <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto pb-0.5 no-scrollbar">
             {["ALL", "WIN", "LOSS", "BREAKEVEN"].map((st) => (
               <button
                 key={st}
                 onClick={() => setFilterStatus(st)}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${
                   filterStatus === st
                     ? st === "WIN"
-                      ? "bg-emerald-500 text-slate-950 font-bold"
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold"
                       : st === "LOSS"
-                      ? "bg-rose-500 text-slate-950 font-bold"
-                      : "bg-cyan-500 text-slate-950 font-bold"
-                    : "bg-slate-950 text-slate-400 hover:text-white border border-slate-800"
+                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold"
+                      : "bg-white/[0.1] text-white border border-white/[0.15] font-bold"
+                    : "bg-[#07080B] text-zinc-400 hover:text-white border border-white/[0.05]"
                 }`}
               >
                 {st === "ALL" ? "All" : st === "WIN" ? "Wins" : st === "LOSS" ? "Losses" : "BE"}
@@ -174,25 +200,25 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
 
       {/* Summary KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Trades</span>
-          <span className="text-lg sm:text-xl font-black text-white mt-0.5 block">{trades.length}</span>
+        <div className="bg-[#0D1018] border border-white/[0.07] p-3.5 sm:p-4 rounded-2xl shadow-luxe-sm">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Total Trades</span>
+          <span className="text-lg sm:text-xl font-black font-mono text-white mt-0.5 block">{trades.length}</span>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Points</span>
-          <span className={`text-lg sm:text-xl font-black mt-0.5 block ${totalPoints >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+        <div className="bg-[#0D1018] border border-white/[0.07] p-3.5 sm:p-4 rounded-2xl shadow-luxe-sm">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Total Points</span>
+          <span className={`text-lg sm:text-xl font-black font-mono mt-0.5 block ${totalPoints >= 0 ? "text-gold-400" : "text-rose-400"}`}>
             {totalPoints >= 0 ? `+${totalPoints.toFixed(1)}` : totalPoints.toFixed(1)} pts
           </span>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Net P&L</span>
-          <span className={`text-lg sm:text-xl font-black mt-0.5 block ${totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+        <div className="bg-[#0D1018] border border-white/[0.07] p-3.5 sm:p-4 rounded-2xl shadow-luxe-sm">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Total Real P&L</span>
+          <span className={`text-lg sm:text-xl font-black font-mono mt-0.5 block ${totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
             {totalPnl >= 0 ? `+${currency}${totalPnl.toLocaleString()}` : `${currency}${totalPnl.toLocaleString()}`}
           </span>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Win Rate</span>
-          <span className="text-lg sm:text-xl font-black text-cyan-400 mt-0.5 block">
+        <div className="bg-[#0D1018] border border-white/[0.07] p-3.5 sm:p-4 rounded-2xl shadow-luxe-sm">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Win Rate</span>
+          <span className="text-lg sm:text-xl font-black font-mono text-emerald-400 mt-0.5 block">
             {trades.length > 0 ? `${((trades.filter(t => t.status === "WIN").length / trades.length) * 100).toFixed(1)}%` : "0%"}
           </span>
         </div>
@@ -202,15 +228,15 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
       {viewMode === "day_grouped" && (
         <div className="space-y-4">
           {dailyGroups.length === 0 ? (
-            <div className="text-center py-14 bg-slate-900/40 border border-slate-800 rounded-3xl p-6">
-              <Layers className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+            <div className="text-center py-16 bg-[#0D1018] border border-white/[0.07] rounded-3xl p-6">
+              <Layers className="w-10 h-10 text-zinc-600 mx-auto mb-2" />
               <h3 className="text-sm font-bold text-white">No Trades Recorded</h3>
-              <p className="text-xs text-slate-400 mt-1 mb-3">
-                Log your first trade with entry, exit, and points
+              <p className="text-xs text-zinc-400 mt-1 mb-4">
+                Log your first trade with real lot sizing and point calculation
               </p>
               <button
                 onClick={onOpenAddModal}
-                className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs"
+                className="px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-black font-black text-xs transition-all shadow-md"
               >
                 Log Trade Now
               </button>
@@ -228,36 +254,38 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
               return (
                 <div
                   key={group.date}
-                  className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl"
+                  className="bg-[#0D1018] border border-white/[0.08] rounded-3xl overflow-hidden shadow-luxe"
                 >
                   {/* Day Summary Header */}
-                  <div className={`px-4 sm:px-6 py-3.5 border-b flex flex-wrap items-center justify-between gap-2.5 ${
+                  <div className={`px-5 sm:px-6 py-3.5 border-b flex flex-wrap items-center justify-between gap-2.5 ${
                     isProfitDay
-                      ? "bg-emerald-950/25 border-emerald-900/30"
+                      ? "bg-emerald-950/20 border-emerald-500/20"
                       : isLossDay
-                      ? "bg-rose-950/25 border-rose-900/30"
-                      : "bg-slate-950/40 border-slate-800"
+                      ? "bg-rose-950/20 border-rose-500/20"
+                      : "bg-[#090A0F] border-white/[0.06]"
                   }`}>
                     <div className="flex items-center gap-2.5">
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                        isProfitDay ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        isProfitDay
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                       }`}>
                         <Calendar className="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="text-sm sm:text-base font-black text-white">{formattedDate}</h3>
-                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">{formattedDate}</h3>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                             isProfitDay
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                               : isLossDay
-                              ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                              : "bg-slate-800 text-slate-400"
+                              ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                              : "bg-white/[0.05] text-zinc-400 border-white/[0.08]"
                           }`}>
                             {isProfitDay ? "PROFIT DAY" : isLossDay ? "LOSS DAY" : "FLAT"}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[11px] text-zinc-400">
                           {group.trades_count} {group.trades_count === 1 ? "trade" : "trades"} • {group.wins}W / {group.losses}L ({group.win_rate}%)
                         </p>
                       </div>
@@ -266,92 +294,94 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
                     {/* Day Aggregates */}
                     <div className="flex items-center gap-4 ml-auto sm:ml-0">
                       <div className="text-right">
-                        <span className="text-[9px] uppercase font-bold text-slate-400 block">Day Points</span>
-                        <span className={`text-sm sm:text-base font-black ${group.total_points >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        <span className="text-[9px] uppercase font-bold text-zinc-400 block">Day Points</span>
+                        <span className={`text-sm sm:text-base font-mono font-bold ${group.total_points >= 0 ? "text-gold-400" : "text-rose-400"}`}>
                           {group.total_points >= 0 ? `+${group.total_points}` : group.total_points} pts
                         </span>
                       </div>
 
                       <div className="text-right">
-                        <span className="text-[9px] uppercase font-bold text-slate-400 block">Day Net P&L</span>
-                        <span className={`text-base sm:text-lg font-black ${group.total_pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        <span className="text-[9px] uppercase font-bold text-zinc-400 block">Day Net P&L</span>
+                        <span className={`text-base sm:text-lg font-mono font-black ${group.total_pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                           {group.total_pnl >= 0 ? `+${currency}${group.total_pnl.toLocaleString()}` : `${currency}${group.total_pnl.toLocaleString()}`}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* 1. MOBILE TRADE CARDS (Visible on mobile screens) */}
-                  <div className="block md:hidden divide-y divide-slate-800/60 p-2 sm:p-3 space-y-2">
+                  {/* 1. MOBILE TRADE CARDS */}
+                  <div className="block md:hidden divide-y divide-white/[0.04] p-3 space-y-2.5">
                     {group.trades.map((trade) => {
+                      const spec = getInstrumentSpec(trade.symbol);
                       const isWin = trade.status === "WIN";
                       const isLoss = trade.status === "LOSS";
+                      const lots = trade.lots || trade.quantity;
 
                       return (
                         <div
                           key={trade.id}
-                          className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 space-y-2.5 transition-all"
+                          className="bg-[#07080B] border border-white/[0.06] rounded-2xl p-3.5 space-y-2.5 shadow-sm"
                         >
-                          {/* Row 1: Symbol, Action badge, Time */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] flex items-center gap-1 ${
+                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] flex items-center gap-1 border ${
                                 trade.action === "BUY"
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                  : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                  : "bg-rose-500/10 text-rose-400 border-rose-500/20"
                               }`}>
                                 {trade.action === "BUY" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                 {trade.action}
                               </span>
-                              <span className="font-bold text-white text-sm">{trade.symbol}</span>
+                              <span className="font-mono font-bold text-white text-sm">{trade.symbol}</span>
+                              <span className="text-[10px] text-gold-400 font-mono">
+                                {lots} {spec.category === "INDEX_FUTURES" ? "lot" : "lots"}
+                              </span>
                             </div>
-                            <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+                            <span className="text-[11px] font-mono text-zinc-400 flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               {trade.time}
                             </span>
                           </div>
 
-                          {/* Row 2: Points badge, Net P&L in big bold */}
-                          <div className="flex items-center justify-between bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                          <div className="flex items-center justify-between bg-[#11141E] p-2.5 rounded-xl border border-white/[0.05]">
                             <div>
-                              <span className="text-[9px] uppercase font-bold text-slate-400 block">Points</span>
-                              <span className={`text-sm font-black font-mono ${trade.points >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              <span className="text-[9px] uppercase font-bold text-zinc-400 block">Points</span>
+                              <span className={`text-sm font-mono font-bold ${trade.points >= 0 ? "text-gold-400" : "text-rose-400"}`}>
                                 {trade.points >= 0 ? `+${trade.points}` : trade.points} pts
                               </span>
                             </div>
 
                             <div className="text-center">
-                              <span className="text-[9px] uppercase font-bold text-slate-400 block">Execution</span>
-                              <span className="text-xs font-mono text-slate-300">
-                                {currency}{trade.entry_price} → {currency}{trade.exit_price}
+                              <span className="text-[9px] uppercase font-bold text-zinc-400 block">Formula</span>
+                              <span className="text-[10px] font-mono text-zinc-400">
+                                {trade.points} × {lots} × {trade.point_multiplier || spec.pointMultiplier}
                               </span>
                             </div>
 
                             <div className="text-right">
-                              <span className="text-[9px] uppercase font-bold text-slate-400 block">Net P&L</span>
-                              <span className={`text-base font-black font-mono ${isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-slate-300"}`}>
+                              <span className="text-[9px] uppercase font-bold text-zinc-400 block">Real P&L</span>
+                              <span className={`text-base font-mono font-black ${isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-zinc-300"}`}>
                                 {trade.net_pnl >= 0 ? `+${currency}${trade.net_pnl.toLocaleString()}` : `${currency}${trade.net_pnl.toLocaleString()}`}
                               </span>
                             </div>
                           </div>
 
-                          {/* Row 3: Strategy & Actions */}
-                          <div className="flex items-center justify-between text-xs pt-1">
-                            <span className="text-[10px] text-slate-400 px-2 py-0.5 rounded bg-slate-900 border border-slate-800 truncate max-w-[180px]">
-                              {trade.strategy || "My Strategy"}
+                          <div className="flex items-center justify-between text-xs pt-0.5">
+                            <span className="text-[10px] text-zinc-400 px-2 py-0.5 rounded bg-white/[0.03] border border-white/[0.05] truncate max-w-[180px]">
+                              {trade.strategy || "Price Action"}
                             </span>
 
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => onEditTrade(trade)}
-                                className="px-2.5 py-1 rounded-lg bg-slate-850 hover:bg-slate-800 text-cyan-400 border border-slate-700 text-xs font-semibold flex items-center gap-1 active:scale-95"
+                                className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-gold-400 border border-white/[0.08] text-xs font-semibold flex items-center gap-1 active:scale-95"
                               >
                                 <Edit3 className="w-3 h-3" />
                                 <span>Edit</span>
                               </button>
                               <button
                                 onClick={() => onDeleteTrade(trade.id)}
-                                className="p-1 rounded-lg bg-slate-850 hover:bg-rose-950 text-rose-400 border border-slate-700 active:scale-95"
+                                className="p-1 rounded-lg bg-white/[0.05] hover:bg-rose-950 text-rose-400 border border-white/[0.08] active:scale-95"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -362,93 +392,98 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
                     })}
                   </div>
 
-                  {/* 2. DESKTOP TABLE (Hidden on mobile) */}
+                  {/* 2. DESKTOP TABLE */}
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider font-semibold border-b border-slate-800">
+                      <thead className="bg-[#090A0F] text-zinc-400 uppercase text-[10px] tracking-widest font-semibold border-b border-white/[0.06]">
                         <tr>
-                          <th className="py-3 px-4">Time</th>
-                          <th className="py-3 px-4">Symbol / Scrip</th>
-                          <th className="py-3 px-4">Action</th>
-                          <th className="py-3 px-4 text-right">Entry</th>
-                          <th className="py-3 px-4 text-right">Exit</th>
-                          <th className="py-3 px-4 text-right">Points</th>
-                          <th className="py-3 px-4 text-right">Qty</th>
-                          <th className="py-3 px-4 text-right">Net P&L</th>
-                          <th className="py-3 px-4">Strategy</th>
-                          <th className="py-3 px-4 text-right">Actions</th>
+                          <th className="py-3.5 px-4">Time</th>
+                          <th className="py-3.5 px-4">Instrument</th>
+                          <th className="py-3.5 px-4">Direction</th>
+                          <th className="py-3.5 px-4 text-right">Entry</th>
+                          <th className="py-3.5 px-4 text-right">Exit</th>
+                          <th className="py-3.5 px-4 text-right">Points</th>
+                          <th className="py-3.5 px-4 text-right">Lot Size</th>
+                          <th className="py-3.5 px-4 text-right">Real Net P&L</th>
+                          <th className="py-3.5 px-4">Strategy</th>
+                          <th className="py-3.5 px-4 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60">
+                      <tbody className="divide-y divide-white/[0.04]">
                         {group.trades.map((trade) => {
+                          const spec = getInstrumentSpec(trade.symbol);
                           const isWin = trade.status === "WIN";
                           const isLoss = trade.status === "LOSS";
+                          const lots = trade.lots || trade.quantity;
 
                           return (
-                            <tr key={trade.id} className="hover:bg-slate-800/40 transition-colors">
-                              <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3 text-slate-500" />
+                            <tr key={trade.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3.5 px-4 font-mono text-zinc-400 whitespace-nowrap">
+                                <span className="flex items-center gap-1.5">
+                                  <Clock className="w-3 h-3 text-zinc-500" />
                                   {trade.time}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                <span className="font-bold text-white block">{trade.symbol}</span>
-                                <span className="text-[10px] text-slate-500 uppercase">{trade.instrument_type}</span>
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span className="font-mono font-bold text-white block">{trade.symbol}</span>
+                                <span className="text-[10px] text-zinc-500">{spec.category.replace("_", " ")}</span>
                               </td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                <span className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[10px] ${
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[10px] border ${
                                   trade.action === "BUY"
-                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                    : "bg-rose-500/10 text-rose-400 border-rose-500/20"
                                 }`}>
                                   {trade.action === "BUY" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                   {trade.action}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-right font-mono text-slate-300">
+                              <td className="py-3.5 px-4 text-right font-mono text-zinc-300">
                                 {currency}{trade.entry_price}
                               </td>
-                              <td className="py-3 px-4 text-right font-mono text-slate-300">
+                              <td className="py-3.5 px-4 text-right font-mono text-zinc-300">
                                 {currency}{trade.exit_price}
                               </td>
-                              <td className="py-3 px-4 text-right whitespace-nowrap">
-                                <span className={`font-black font-mono px-2 py-0.5 rounded ${
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                <span className={`font-mono font-bold px-2 py-0.5 rounded ${
                                   trade.points >= 0
-                                    ? "text-emerald-400 bg-emerald-500/10"
+                                    ? "text-gold-400 bg-gold-500/10"
                                     : "text-rose-400 bg-rose-500/10"
                                 }`}>
                                   {trade.points >= 0 ? `+${trade.points}` : trade.points} pts
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-right font-mono text-slate-400">
-                                {trade.quantity}
+                              <td className="py-3.5 px-4 text-right font-mono whitespace-nowrap">
+                                <span className="text-white font-bold">{lots} lot</span>
+                                <span className="text-[10px] text-zinc-500 block">
+                                  (×{trade.point_multiplier || spec.pointMultiplier})
+                                </span>
                               </td>
-                              <td className="py-3 px-4 text-right whitespace-nowrap">
-                                <span className={`font-bold font-mono text-sm ${
-                                  isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-slate-300"
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                <span className={`font-mono font-black text-sm ${
+                                  isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-zinc-300"
                                 }`}>
                                   {trade.net_pnl >= 0 ? `+${currency}${trade.net_pnl.toLocaleString()}` : `${currency}${trade.net_pnl.toLocaleString()}`}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                <span className="text-[11px] text-slate-300 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
-                                  {trade.strategy || "Strategy"}
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span className="text-[11px] text-zinc-300 px-2.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
+                                  {trade.strategy || "Price Action"}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-right whitespace-nowrap">
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     onClick={() => onEditTrade(trade)}
                                     title="Edit Trade"
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-all"
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:text-gold-400 hover:bg-white/[0.05] transition-all"
                                   >
                                     <Edit3 className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => onDeleteTrade(trade.id)}
                                     title="Delete Trade"
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-all"
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-white/[0.05] transition-all"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -467,85 +502,94 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
         </div>
       )}
 
-      {/* FLAT TABLE VIEW (Desktop / Tablet) */}
+      {/* FLAT TABLE VIEW */}
       {viewMode === "flat" && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+        <div className="bg-[#0D1018] border border-white/[0.08] rounded-3xl overflow-hidden shadow-luxe">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider font-semibold border-b border-slate-800">
+              <thead className="bg-[#090A0F] text-zinc-400 uppercase text-[10px] tracking-widest font-semibold border-b border-white/[0.06]">
                 <tr>
                   <th className="py-3.5 px-4">Date & Time</th>
                   <th className="py-3.5 px-4">Symbol</th>
-                  <th className="py-3.5 px-4">Action</th>
+                  <th className="py-3.5 px-4">Direction</th>
                   <th className="py-3.5 px-4 text-right">Entry</th>
                   <th className="py-3.5 px-4 text-right">Exit</th>
                   <th className="py-3.5 px-4 text-right">Points</th>
-                  <th className="py-3.5 px-4 text-right">Qty</th>
+                  <th className="py-3.5 px-4 text-right">Lots</th>
                   <th className="py-3.5 px-4 text-right">Net P&L</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Strategy</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-white/[0.04]">
                 {filteredTrades.map((trade) => {
+                  const spec = getInstrumentSpec(trade.symbol);
                   const isWin = trade.status === "WIN";
                   const isLoss = trade.status === "LOSS";
+                  const lots = trade.lots || trade.quantity;
+
                   return (
-                    <tr key={trade.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">
+                    <tr key={trade.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3 px-4 font-mono text-zinc-400 whitespace-nowrap">
                         {trade.date} {trade.time}
                       </td>
-                      <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono font-bold text-white whitespace-nowrap">
                         {trade.symbol}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                          trade.action === "BUY" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                        <span className={`font-bold px-2 py-0.5 rounded text-[10px] border ${
+                          trade.action === "BUY"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-400 border-rose-500/20"
                         }`}>
                           {trade.action}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-300">
+                      <td className="py-3 px-4 text-right font-mono text-zinc-300">
                         {currency}{trade.entry_price}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-300">
+                      <td className="py-3 px-4 text-right font-mono text-zinc-300">
                         {currency}{trade.exit_price}
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-bold whitespace-nowrap">
-                        <span className={trade.points >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                        <span className={trade.points >= 0 ? "text-gold-400" : "text-rose-400"}>
                           {trade.points >= 0 ? `+${trade.points}` : trade.points} pts
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-400">
-                        {trade.quantity}
+                      <td className="py-3 px-4 text-right font-mono text-zinc-300 whitespace-nowrap">
+                        {lots} lot
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold whitespace-nowrap">
-                        <span className={isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-slate-300"}>
+                      <td className="py-3 px-4 text-right font-mono font-black whitespace-nowrap">
+                        <span className={isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-zinc-300"}>
                           {trade.net_pnl >= 0 ? `+${currency}${trade.net_pnl.toLocaleString()}` : `${currency}${trade.net_pnl.toLocaleString()}`}
                         </span>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          isWin ? "bg-emerald-500/10 text-emerald-400" : isLoss ? "bg-rose-500/10 text-rose-400" : "bg-slate-800 text-slate-400"
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                          isWin
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : isLoss
+                            ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                            : "bg-white/[0.04] text-zinc-400 border-white/[0.08]"
                         }`}>
                           {trade.status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
+                      <td className="py-3 px-4 text-zinc-300 whitespace-nowrap">
                         {trade.strategy}
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => onEditTrade(trade)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-gold-400 hover:bg-white/[0.05]"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => onDeleteTrade(trade.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-white/[0.05]"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -575,6 +619,13 @@ export const TradeJournalTable: React.FC<TradeJournalTableProps> = ({
           </button>
         </div>
       )}
+
+      {/* Lot Sizer Modal Triggered From Table */}
+      <LotSizeCalculatorModal
+        isOpen={isCalcOpen}
+        onClose={() => setIsCalcOpen(false)}
+        currency={currency}
+      />
 
     </div>
   );

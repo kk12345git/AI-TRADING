@@ -10,6 +10,7 @@ import { UserProfileSettingsModal } from "../components/UserProfileSettingsModal
 import { TraderComparisonView } from "../components/TraderComparisonView";
 import { AuthPortal } from "../components/AuthPortal";
 import { MobileBottomNav } from "../components/MobileBottomNav";
+import { LotSizeCalculatorModal } from "../components/LotSizeCalculatorModal";
 
 import { api } from "../services/api";
 import {
@@ -31,6 +32,7 @@ export default function HomePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isCalcModalOpen, setIsCalcModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Initialize App: load traders list. ALWAYS require authentication gate first on open/refresh!
@@ -164,7 +166,7 @@ export default function HomePage() {
   const currency = activeTrader.base_currency || "₹";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#07080B] text-zinc-100 flex flex-col font-sans selection:bg-gold-500 selection:text-black bg-grid-subtle">
       
       {/* Top Header Navigation */}
       <HeaderNav
@@ -180,6 +182,7 @@ export default function HomePage() {
           setEditingTrade(null);
           setIsAddModalOpen(true);
         }}
+        onOpenCalculator={() => setIsCalcModalOpen(true)}
         onLogout={handleLogout}
         totalTrades={trades.length}
         netPnl={report?.metrics.net_pnl || 0}
@@ -188,7 +191,7 @@ export default function HomePage() {
       {/* Main Content with bottom padding on mobile for MobileBottomNav */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-7 space-y-6 pb-24 md:pb-8">
         
-        {/* KPI Cards Overview (Always visible on top of Dashboard and Register) */}
+        {/* KPI Cards Overview */}
         {report && (
           <MetricsOverview
             metrics={report.metrics}
@@ -213,7 +216,7 @@ export default function HomePage() {
           />
         )}
 
-        {/* TAB 2: PERIODIC DASHBOARD (DAILY, WEEKLY, MONTHLY, QUARTERLY, HALF, ANNUALLY) */}
+        {/* TAB 2: PERIODIC DASHBOARD */}
         {activeTab === "dashboard" && (
           <div className="space-y-6">
             <AnalyticsCharts
@@ -262,6 +265,12 @@ export default function HomePage() {
         editingTrade={editingTrade}
         currency={currency}
         activeUserId={activeTrader.id}
+      />
+
+      <LotSizeCalculatorModal
+        isOpen={isCalcModalOpen}
+        onClose={() => setIsCalcModalOpen(false)}
+        currency={currency}
       />
 
       <UserProfileSettingsModal

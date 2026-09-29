@@ -11,16 +11,24 @@ from app.models.schemas import Instrument, TickData, Candle, OptionChainData, Op
 SYMBOL_MAP = {
     "XAUUSD": "GC=F",
     "NASDAQ": "^IXIC",
+    "US30": "^DJI",
+    "SPX500": "^GSPC",
+    "GER40": "^GDAXI",
     "NIFTY50": "^NSEI",
     "NIFTY 50": "^NSEI",
+    "BANKNIFTY": "^NSEBANK",
     "SENSEX": "^BSESN"
 }
 
 LIVE_INSTRUMENTS: List[Dict[str, Any]] = [
-    {"symbol": "XAUUSD", "trading_symbol": "XAUUSD", "name": "Gold / US Dollar Spot", "exchange": "FOREX", "instrument_type": "COMMODITY", "lot_size": 1, "tick_size": 0.01, "base_price": 2685.50, "token": "XAUUSD"},
-    {"symbol": "NASDAQ", "trading_symbol": "NASDAQ", "name": "NASDAQ 100 Index", "exchange": "US", "instrument_type": "INDEX", "lot_size": 1, "tick_size": 0.25, "base_price": 20150.0, "token": "NASDAQ"},
-    {"symbol": "NIFTY50", "trading_symbol": "NIFTY50", "name": "NSE NIFTY 50 Index", "exchange": "NSE", "instrument_type": "INDEX", "lot_size": 25, "tick_size": 0.05, "base_price": 25800.0, "token": "256265"},
-    {"symbol": "SENSEX", "trading_symbol": "SENSEX", "name": "BSE SENSEX Index", "exchange": "BSE", "instrument_type": "INDEX", "lot_size": 10, "tick_size": 0.05, "base_price": 84200.0, "token": "1"}
+    {"symbol": "XAUUSD", "trading_symbol": "XAUUSD", "name": "Gold / US Dollar Spot (100 oz/lot)", "exchange": "FOREX", "instrument_type": "COMMODITY", "lot_size": 1, "tick_size": 0.01, "base_price": 2685.50, "token": "XAUUSD"},
+    {"symbol": "NASDAQ", "trading_symbol": "NASDAQ", "name": "NASDAQ 100 Index (1 unit/lot)", "exchange": "US", "instrument_type": "INDEX", "lot_size": 1, "tick_size": 0.25, "base_price": 20150.0, "token": "NASDAQ"},
+    {"symbol": "US30", "trading_symbol": "US30", "name": "Dow Jones 30 Index (1 unit/lot)", "exchange": "US", "instrument_type": "INDEX", "lot_size": 1, "tick_size": 1.0, "base_price": 42100.0, "token": "US30"},
+    {"symbol": "SPX500", "trading_symbol": "SPX500", "name": "S&P 500 Index (1 unit/lot)", "exchange": "US", "instrument_type": "INDEX", "lot_size": 1, "tick_size": 0.10, "base_price": 5750.0, "token": "SPX500"},
+    {"symbol": "GER40", "trading_symbol": "GER40", "name": "Germany 40 DAX (1 unit/lot)", "exchange": "EU", "instrument_type": "INDEX", "lot_size": 1, "tick_size": 0.50, "base_price": 19250.0, "token": "GER40"},
+    {"symbol": "NIFTY50", "trading_symbol": "NIFTY50", "name": "NSE NIFTY 50 Index (25 shares/lot)", "exchange": "NSE", "instrument_type": "INDEX", "lot_size": 25, "tick_size": 0.05, "base_price": 25800.0, "token": "256265"},
+    {"symbol": "BANKNIFTY", "trading_symbol": "BANKNIFTY", "name": "NSE Bank NIFTY Index (15 shares/lot)", "exchange": "NSE", "instrument_type": "INDEX", "lot_size": 15, "tick_size": 0.05, "base_price": 53500.0, "token": "260105"},
+    {"symbol": "SENSEX", "trading_symbol": "SENSEX", "name": "BSE SENSEX Index (10 shares/lot)", "exchange": "BSE", "instrument_type": "INDEX", "lot_size": 10, "tick_size": 0.05, "base_price": 84200.0, "token": "1"}
 ]
 
 class LiveNSEMarketDataProvider(MarketDataProvider):

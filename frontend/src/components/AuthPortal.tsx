@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { UserProfile, UserLoginInput } from "../types/portfolio";
-import { Lock, ShieldCheck, KeyRound, ArrowRight, UserCheck, AlertCircle } from "lucide-react";
+import { Lock, ShieldCheck, KeyRound, ArrowRight, UserCheck, AlertCircle, Sparkles } from "lucide-react";
 
 interface AuthPortalProps {
   traders: UserProfile[];
@@ -42,7 +42,6 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({
   onAuthenticate,
   onLoginAttempt
 }) => {
-  // Use passed traders if valid (contains rakesh or karthi), otherwise use guaranteed default
   const validTraders = traders.length > 0 && traders.some(t => t.username === "rakesh" || t.id === "rakesh")
     ? traders
     : GUARANTEED_TRADERS;
@@ -57,7 +56,7 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!pin.trim()) {
-      setError("Please enter your security code to proceed");
+      setError("Please enter your security PIN to proceed");
       return;
     }
 
@@ -73,11 +72,10 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({
       if (user) {
         onAuthenticate(user);
       } else {
-        // Direct PIN fallback check
         if (pin.trim() === activeTrader.pin) {
           onAuthenticate(activeTrader);
         } else {
-          setError(`Incorrect security code for ${activeTrader?.name}. Please try again.`);
+          setError(`Incorrect security PIN for ${activeTrader?.name}. Please try again.`);
         }
       }
     } catch (err: any) {
@@ -92,32 +90,31 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
-      {/* Background Decorative Gradients */}
-      <div className="absolute top-1/4 left-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
+    <div className="min-h-screen w-full bg-[#07080B] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden bg-grid-subtle">
+      {/* Subtle luxury ambient glow */}
+      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-gold-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="relative w-full max-w-lg bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-xl p-5 sm:p-8 z-10 my-4">
+      <div className="relative w-full max-w-md bg-[#0D1018] border border-white/[0.08] rounded-3xl shadow-luxe backdrop-blur-2xl p-6 sm:p-8 z-10 my-4">
         
         {/* Header Icon & Title */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-emerald-500/20 border border-cyan-500/30 text-cyan-400 mb-3 shadow-lg shadow-cyan-500/10">
-            <Lock className="w-7 h-7 sm:w-8 sm:h-8" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gold-500/10 border border-gold-500/25 text-gold-400 mb-3.5 shadow-sm">
+            <Lock className="w-7 h-7" />
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Trader Authentication Gate
+            TradeMatrix <span className="text-gold-400 font-serif italic">Portal</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-            Live working trading register & analytics for Rakesh & Karthi
+          <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">
+            Institutional multi-asset terminal for Rakesh & Karthi
           </p>
         </div>
 
-        {/* 2-Trader Account Selection Cards (Rakesh & Karthi) */}
+        {/* 2-Trader Account Selection Cards */}
         <div className="space-y-2.5 mb-5">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-            Select Account
+          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+            <UserCheck className="w-3.5 h-3.5 text-gold-400" />
+            Select Trader Account
           </label>
           <div className="grid grid-cols-2 gap-2.5">
             {validTraders.slice(0, 2).map((trader) => {
@@ -130,33 +127,21 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({
                     setPin("");
                     setError(null);
                   }}
-                  className={`cursor-pointer p-3 sm:p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between select-none active:scale-[0.98] ${
+                  className={`cursor-pointer p-3.5 rounded-2xl border transition-all duration-200 flex flex-col justify-between select-none active:scale-[0.98] ${
                     isSelected
-                      ? "bg-slate-850 border-cyan-500 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500"
-                      : "bg-slate-950/70 border-slate-800 hover:border-slate-700"
+                      ? "bg-white/[0.08] border-gold-500/50 shadow-sm ring-1 ring-gold-500/30"
+                      : "bg-[#07080B] border-white/[0.05] hover:border-white/[0.12]"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl p-1.5 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-xl p-1.5 rounded-xl bg-[#11141E] border border-white/[0.06]">
                       {trader.avatar || "⚡"}
                     </span>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
-                      isSelected
-                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
-                        : "bg-slate-800 text-slate-400 border-slate-700"
-                    }`}>
-                      Live Trader
-                    </span>
+                    <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-gold-400" : "bg-zinc-700"}`} />
                   </div>
-
                   <div>
-                    <h3 className="font-bold text-white text-base truncate">{trader.name}</h3>
-                    <p className="text-[11px] text-emerald-400 font-mono mt-0.5 font-bold">
-                      Base Capital: ₹0
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-1 truncate">
-                      {trader.name === "Rakesh" ? "Code: 2580" : "Code: 3790"}
-                    </p>
+                    <h3 className="font-bold text-white text-sm tracking-tight">{trader.name}</h3>
+                    <p className="text-[10px] text-zinc-500 truncate mt-0.5">{trader.trading_style}</p>
                   </div>
                 </div>
               );
@@ -164,64 +149,60 @@ export const AuthPortal: React.FC<AuthPortalProps> = ({
           </div>
         </div>
 
-        {/* PIN Entry Form */}
+        {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
-                Security Code for {activeTrader?.name}
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1">
+                <KeyRound className="w-3 h-3 text-gold-400" />
+                Security PIN Code
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {activeTrader?.name === "Rakesh" ? "Code: 2580" : "Code: 3790"}
+              <span className="text-[10px] text-zinc-500 font-mono">
+                {activeTrader.name}: {activeTrader.pin}
               </span>
             </div>
-            <div className="relative">
-              <input
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={8}
-                value={pin}
-                onChange={(e) => {
-                  setPin(e.target.value);
-                  setError(null);
-                }}
-                placeholder={`Enter security code for ${activeTrader?.name}...`}
-                className="w-full bg-slate-950 border border-slate-700/80 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-white placeholder-slate-500 px-4 py-3 rounded-xl text-center text-lg tracking-widest font-mono transition-all outline-none"
-                autoFocus
-              />
-            </div>
+            
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => {
+                setPin(e.target.value);
+                setError(null);
+              }}
+              placeholder={`Enter PIN for ${activeTrader.name}`}
+              autoFocus
+              className="w-full bg-[#07080B] border border-white/[0.08] text-white placeholder-zinc-600 px-4 py-3 rounded-2xl text-center text-lg font-mono tracking-widest focus:border-gold-500/60 focus:outline-none transition-all shadow-inner"
+            />
           </div>
 
-          {/* Error Notice */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 active:scale-[0.98] text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-gold-500 via-gold-400 to-amber-500 hover:brightness-110 active:scale-[0.98] text-black font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
-              <span className="inline-block animate-spin mr-1">⏳</span>
+              <span className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full" />
             ) : (
-              <ShieldCheck className="w-4 h-4" />
+              <>
+                <span>Access {activeTrader.name}&apos;s Workspace</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </>
             )}
-            Enter Dashboard & Register
-            <ArrowRight className="w-4 h-4 ml-0.5" />
           </button>
         </form>
 
-        {/* Live App Footnote */}
-        <div className="mt-5 pt-4 border-t border-slate-800 text-center">
-          <p className="text-[11px] text-slate-400">
-            Instruments: <span className="text-slate-300 font-semibold font-mono">XAUUSD • NASDAQ • NIFTY50 • SENSEX</span>
+        <div className="mt-5 pt-4 border-t border-white/[0.06] text-center">
+          <p className="text-[11px] text-zinc-500">
+            Gold Spot (XAUUSD) • NASDAQ 100 • US30 • NIFTY 50 • SENSEX
           </p>
         </div>
 
