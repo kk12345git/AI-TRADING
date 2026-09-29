@@ -4,9 +4,11 @@ import {
   MetricsSummary, TimeframeAggregation, DailyTradeGroup, EquityPoint, StrategyStat
 } from "../types/portfolio";
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = typeof window !== "undefined" && window.location.hostname !== "localhost"
+  ? "/api"
+  : "http://localhost:8000/api";
 
-const DEFAULT_USERS: UserProfile[] = [
+export const DEFAULT_USERS: UserProfile[] = [
   {
     id: "rakesh",
     name: "Rakesh",
@@ -33,8 +35,24 @@ const DEFAULT_USERS: UserProfile[] = [
   }
 ];
 
+// Clean legacy localStorage to immediately switch to Rakesh & Karthi
+function purgeLegacyStorage() {
+  if (typeof window === "undefined") return;
+  try {
+    const saved = localStorage.getItem("trade_reg_users") || localStorage.getItem("trading_ai_users");
+    if (saved && (saved.includes("trader_1") || saved.includes("Trader 1") || saved.includes("Alpha") || saved.includes("Pro"))) {
+      localStorage.removeItem("trading_ai_users");
+      localStorage.removeItem("trading_ai_active_user_id");
+      localStorage.setItem("trade_reg_users", JSON.stringify(DEFAULT_USERS));
+      localStorage.setItem("trade_reg_active_user", "rakesh");
+    }
+  } catch {}
+}
+purgeLegacyStorage();
+
 function getLocalUsers(): UserProfile[] {
   if (typeof window === "undefined") return DEFAULT_USERS;
+  purgeLegacyStorage();
   const saved = localStorage.getItem("trade_reg_users");
   if (saved) {
     try {
@@ -73,8 +91,10 @@ function saveLocalTrades(userId: string, trades: Trade[]) {
 }
 
 function getActiveUserId(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("trade_reg_active_user");
+  if (typeof window === "undefined") return "rakesh";
+  const id = localStorage.getItem("trade_reg_active_user");
+  if (id === "trader_1" || id === "trader1" || id === "trader_2") return "rakesh";
+  return id;
 }
 
 function setActiveUserId(id: string | null) {
@@ -213,7 +233,6 @@ function computeClientAnalytics(trades: Trade[], timeframe: TimeframeFilter): Pe
     if (timeframe === "daily") {
       key = t.date;
     } else if (timeframe === "weekly") {
-      // Simple ISO week approximation
       const weekNum = Math.ceil((d.getDate()) / 7);
       key = `${year}-W${String(weekNum).padStart(2, "0")}`;
     } else if (timeframe === "monthly") {
@@ -309,8 +328,10 @@ export const api = {
       const res = await fetch(`${API_BASE_URL}/users`);
       if (res.ok) {
         const users = await res.json();
-        saveLocalUsers(users);
-        return users;
+        if (Array.isArray(users) && users.some(u => u.username === "rakesh" || u.username === "karthi")) {
+          saveLocalUsers(users);
+          return users;
+        }
       }
     } catch (e) {
       console.warn("Backend offline, using local users:", e);
@@ -334,12 +355,12 @@ export const api = {
       console.warn("Backend offline, validating login locally:", e);
     }
 
-    // Local validation fallback
+    // Local validation fallback for Rakesh (2580) and Karthi (3790)
     const users = getLocalUsers();
     const cleanUser = credentials.username.trim().toLowerCase();
     const cleanPin = credentials.pin.trim();
     const found = users.find(u =>
-      (u.username.toLowerCase() === cleanUser || u.id.toLowerCase() === cleanUser) &&
+      (u.username.toLowerCase() === cleanUser || u.id.toLowerCase() === cleanUser || u.name.toLowerCase() === cleanUser) &&
       u.pin.trim() === cleanPin
     );
 
@@ -419,8 +440,7 @@ export const api = {
       console.warn("Backend offline, creating trade locally:", e);
     }
 
-    // Local trade creation
-    const userId = input.user_id || "trader_1";
+    const userId = input.user_id || "rakesh";
     const action = input.action.toUpperCase();
     const pts = input.points !== undefined && input.points !== null
       ? Number(input.points)
