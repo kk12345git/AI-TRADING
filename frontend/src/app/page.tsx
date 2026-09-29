@@ -179,6 +179,7 @@ export default function HomePage() {
         }}
         onLogout={handleLogout}
         totalTrades={trades.length}
+        netPnl={report?.metrics.net_pnl || 0}
       />
 
       {/* Main Content with bottom padding on mobile for MobileBottomNav */}

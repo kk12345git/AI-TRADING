@@ -10,37 +10,35 @@ from app.models.trade import (
 DATA_FILE = os.path.join(os.path.dirname(__file__), "trades_db.json")
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users_db.json")
 
-# Default 2 Traders
+# Dedicated 2 Traders: Rakesh (Code: 2580) & Karthi (Code: 3790) with 0 initial capital
 DEFAULT_USERS = [
     UserProfile(
-        id="trader_1",
-        name="Trader 1 (Alpha)",
-        username="trader1",
-        pin="1234",
+        id="rakesh",
+        name="Rakesh",
+        username="rakesh",
+        pin="2580",
         avatar="⚡",
         base_currency="₹",
-        trading_style="Index Options & Momentum",
-        primary_market="NIFTY / BANKNIFTY",
-        account_capital=100000.0,
+        trading_style="Price Action & Momentum",
+        primary_market="NIFTY / BANKNIFTY Options",
+        account_capital=0.0,
         created_at="2026-01-01 09:15:00"
     ),
     UserProfile(
-        id="trader_2",
-        name="Trader 2 (Pro)",
-        username="trader2",
-        pin="5678",
+        id="karthi",
+        name="Karthi",
+        username="karthi",
+        pin="3790",
         avatar="🎯",
         base_currency="₹",
-        trading_style="Price Action & Swing",
+        trading_style="Strategy & Breakout",
         primary_market="Equities & Futures",
-        account_capital=150000.0,
+        account_capital=0.0,
         created_at="2026-01-01 09:15:00"
     )
 ]
 
-def generate_sample_trades(user_id: str, prefix: str = "T1") -> List[Trade]:
-    # Generate realistic historical trades across several months, quarters, and weeks
-    # so weekly, monthly, quarterly, half-yearly, and annually views look alive immediately
+def generate_sample_trades(user_id: str) -> List[Trade]:
     base_dates = [
         # Quarter 1 (Half 1)
         ("2026-01-12", "09:35", "NIFTY 24000 CE", "BUY", 50, 110.0, 155.0, 45.0, 2200.0, "WIN", "My Breakout Strategy"),
@@ -67,11 +65,10 @@ def generate_sample_trades(user_id: str, prefix: str = "T1") -> List[Trade]:
 
     sample_trades = []
     for idx, (dt, tm, sym, act, qty, entry, exit_p, pts, pnl, stat, strat) in enumerate(base_dates):
-        # Adjust slightly for trader 2 to give unique realistic performance
-        if user_id == "trader_2":
+        if user_id == "karthi":
             qty = qty * 1.5
-            pnl = round(pnl * 1.4, 2)
-            pts = round(pts * 1.1, 1)
+            pnl = round(pnl * 1.25, 2)
+            pts = round(pts * 1.05, 1)
 
         t = Trade(
             id=f"trade-{user_id}-{idx+1:03d}",
@@ -87,10 +84,10 @@ def generate_sample_trades(user_id: str, prefix: str = "T1") -> List[Trade]:
             points=pts,
             net_pnl=pnl,
             pnl_percent=round((pts / entry) * 100, 2) if entry > 0 else 0.0,
-            fees=50.0,
+            fees=40.0,
             status=stat,
             strategy=strat,
-            notes="Trade executed according to rulebook strategy.",
+            notes="Strategy entry and exit followed.",
             created_at=f"{dt} {tm}:00"
         )
         sample_trades.append(t)
@@ -111,7 +108,13 @@ class StorageManager:
                 with open(self.users_file, "r", encoding="utf-8") as f:
                     raw = json.load(f)
                     if isinstance(raw, list) and len(raw) > 0:
-                        self.users = [UserProfile(**item) for item in raw]
+                        # Check if users are Rakesh and Karthi
+                        usernames = [u.get("username", "") for u in raw]
+                        if "rakesh" in usernames or "karthi" in usernames:
+                            self.users = [UserProfile(**item) for item in raw]
+                        else:
+                            self.users = list(DEFAULT_USERS)
+                            self._save_users()
                     else:
                         self.users = list(DEFAULT_USERS)
                         self._save_users()
@@ -134,16 +137,21 @@ class StorageManager:
                 with open(self.data_file, "r", encoding="utf-8") as f:
                     raw = json.load(f)
                     if isinstance(raw, list) and len(raw) > 0:
-                        self.trades = [Trade(**item) for item in raw]
+                        trade_user_ids = set(t.get("user_id", "") for t in raw)
+                        if "rakesh" in trade_user_ids or "karthi" in trade_user_ids:
+                            self.trades = [Trade(**item) for item in raw]
+                        else:
+                            self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
+                            self._save_trades()
                     else:
-                        self.trades = generate_sample_trades("trader_1") + generate_sample_trades("trader_2")
+                        self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
                         self._save_trades()
             except Exception as e:
                 print(f"Error loading trades json, initializing starter trades: {e}")
-                self.trades = generate_sample_trades("trader_1") + generate_sample_trades("trader_2")
+                self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
                 self._save_trades()
         else:
-            self.trades = generate_sample_trades("trader_1") + generate_sample_trades("trader_2")
+            self.trades = generate_sample_trades("rakesh") + generate_sample_trades("karthi")
             self._save_trades()
 
     def _save_trades(self):
@@ -173,7 +181,7 @@ class StorageManager:
         user = self.get_user_by_username(req.username)
         if not user:
             return None
-        # PIN / Password comparison
+        # PIN code verification
         if str(user.pin).strip() == str(req.pin).strip():
             return user
         return None

@@ -3,7 +3,7 @@
 import React from "react";
 import {
   TrendingUp, Plus, Users, ShieldCheck, BarChart2, BookOpen,
-  Settings, LogOut, Lock, ArrowLeftRight
+  Settings, LogOut, Lock, ArrowLeftRight, Wallet
 } from "lucide-react";
 import { CurrencySymbol, UserProfile } from "../types/portfolio";
 
@@ -19,6 +19,7 @@ interface HeaderNavProps {
   onOpenAddModal: () => void;
   onLogout: () => void;
   totalTrades: number;
+  netPnl?: number;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -32,49 +33,54 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenProfileSettings,
   onOpenAddModal,
   onLogout,
-  totalTrades
+  totalTrades,
+  netPnl = 0
 }) => {
   const otherTrader = allTraders.find(t => t.id !== activeTrader.id) || allTraders[0];
 
+  // Calculated Capital = Starting Capital (0) + Net P&L
+  const currentCapital = Number(((activeTrader.account_capital || 0) + netPnl).toFixed(2));
+  const isCapitalPositive = currentCapital >= 0;
+
   const navItems = [
-    { id: "dashboard", label: "Performance Dashboard", desc: "Weekly, Monthly, Quarterly, Half, Annually", icon: BarChart2 },
     { id: "register", label: "Trade Register", desc: "Daily Points & P&L Log", icon: BookOpen },
-    { id: "comparison", label: "Traders Comparison", desc: "Trader 1 vs Trader 2", icon: Users }
+    { id: "dashboard", label: "Performance Reports", desc: "Weekly, Monthly, Quarterly, Half, Annually", icon: BarChart2 },
+    { id: "comparison", label: "Rakesh vs Karthi", desc: "2-Trader Comparison", icon: Users }
   ];
 
   return (
     <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800 shadow-2xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
         
         {/* Main Bar */}
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           
-          {/* Logo & App Name */}
+          {/* Logo & Trader Badge */}
           <div
-            className="flex items-center space-x-3 cursor-pointer select-none"
-            onClick={() => setActiveTab("dashboard")}
+            className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer select-none"
+            onClick={() => setActiveTab("register")}
           >
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 p-[2px] shadow-lg shadow-cyan-500/20">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 p-[2px] shadow-lg shadow-cyan-500/20">
               <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-cyan-400" />
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
               </div>
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-xl font-black tracking-tight text-white">
-                  TradeRegister <span className="text-cyan-400 font-medium text-sm">PRO</span>
+              <div className="flex items-center space-x-1.5">
+                <h1 className="text-base sm:text-xl font-black tracking-tight text-white">
+                  TradeRegister
                 </h1>
-                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
-                  Authenticated
+                <span className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
+                  {activeTrader.name}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
-                Points & P&L Register • Periodic Performance Reports
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium hidden sm:block">
+                Points & Daily Profit/Loss Journal
               </p>
             </div>
           </div>
 
-          {/* Center Tabs Navigation */}
+          {/* Center Tabs Navigation (Desktop) */}
           <nav className="hidden md:flex items-center space-x-1 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -83,9 +89,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                     isActive
-                      ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20"
+                      ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-black"
                       : "text-slate-400 hover:text-white hover:bg-slate-800"
                   }`}
                 >
@@ -96,48 +102,51 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             })}
           </nav>
 
-          {/* Right Controls: Active Trader & Actions */}
+          {/* Right Controls: Active Trader & Capital */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             
-            {/* Quick Switch between the 2 Persons */}
+            {/* Quick Switch between Rakesh & Karthi */}
             {otherTrader && otherTrader.id !== activeTrader.id && (
               <button
                 onClick={() => onSwitchTrader(otherTrader)}
-                title={`Switch to ${otherTrader.name}`}
-                className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs text-slate-300 hover:text-white transition-all"
+                title={`Switch trader to ${otherTrader.name}`}
+                className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs text-slate-300 hover:text-white transition-all active:scale-95"
               >
                 <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Switch to {otherTrader.name.split(" ")[0]}</span>
+                <span>Switch to {otherTrader.name}</span>
               </button>
             )}
 
-            {/* Active Trader Profile Pill */}
+            {/* Calculated Capital Display & Profile Pill */}
             <div
               onClick={onOpenProfileSettings}
               title="Click to view & edit trader profile"
-              className="flex items-center space-x-2.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-850 border border-cyan-500/40 rounded-2xl cursor-pointer transition-all shadow-md group"
+              className="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 bg-slate-900 hover:bg-slate-850 border border-cyan-500/40 rounded-2xl cursor-pointer transition-all shadow-md group"
             >
-              <span className="text-xl p-1 rounded-xl bg-slate-950 border border-slate-800">
+              <span className="text-lg sm:text-xl p-1 rounded-xl bg-slate-950 border border-slate-800">
                 {activeTrader.avatar || "⚡"}
               </span>
-              <div className="text-left hidden sm:block">
-                <div className="text-xs font-bold text-white leading-tight group-hover:text-cyan-400 transition-colors">
+              <div className="text-left">
+                <div className="text-[11px] sm:text-xs font-bold text-white leading-tight group-hover:text-cyan-400 transition-colors">
                   {activeTrader.name}
                 </div>
-                <div className="text-[10px] text-emerald-400 font-mono">
-                  {currency}{activeTrader.account_capital.toLocaleString()}
+                <div className={`text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-0.5 ${
+                  isCapitalPositive ? "text-emerald-400" : "text-rose-400"
+                }`}>
+                  <Wallet className="w-3 h-3 text-cyan-400" />
+                  {currentCapital >= 0 ? `${currency}${currentCapital.toLocaleString()}` : `-${currency}${Math.abs(currentCapital).toLocaleString()}`}
                 </div>
               </div>
               <Settings className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-colors hidden sm:block ml-1" />
             </div>
 
-            {/* Take New Trade Button */}
+            {/* Take New Trade Button (Desktop) */}
             <button
               onClick={onOpenAddModal}
-              className="px-3.5 sm:px-4 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 active:scale-[0.98] text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center space-x-1.5"
+              className="hidden sm:flex px-3.5 sm:px-4 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 active:scale-[0.98] text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all items-center space-x-1.5"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Take Trade</span>
+              <span>Log Trade</span>
             </button>
 
             {/* Lock / Logout Button */}
@@ -152,28 +161,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
           </div>
 
-        </div>
-
-        {/* Mobile Navigation Row */}
-        <div className="flex md:hidden items-center justify-between pb-3 pt-1 border-t border-slate-900 gap-1 overflow-x-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-bold text-center flex items-center justify-center space-x-1 whitespace-nowrap transition-all ${
-                  isActive
-                    ? "bg-cyan-500 text-slate-950 font-black"
-                    : "text-slate-400 hover:text-white bg-slate-900"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
         </div>
 
       </div>

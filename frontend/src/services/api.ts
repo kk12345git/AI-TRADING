@@ -8,27 +8,27 @@ const API_BASE_URL = "http://localhost:8000/api";
 
 const DEFAULT_USERS: UserProfile[] = [
   {
-    id: "trader_1",
-    name: "Trader 1 (Alpha)",
-    username: "trader1",
-    pin: "1234",
+    id: "rakesh",
+    name: "Rakesh",
+    username: "rakesh",
+    pin: "2580",
     avatar: "⚡",
     base_currency: "₹",
-    trading_style: "Index Options & Momentum",
-    primary_market: "NIFTY / BANKNIFTY",
-    account_capital: 100000,
+    trading_style: "Price Action & Momentum",
+    primary_market: "NIFTY / BANKNIFTY Options",
+    account_capital: 0,
     created_at: "2026-01-01 09:15:00"
   },
   {
-    id: "trader_2",
-    name: "Trader 2 (Pro)",
-    username: "trader2",
-    pin: "5678",
+    id: "karthi",
+    name: "Karthi",
+    username: "karthi",
+    pin: "3790",
     avatar: "🎯",
     base_currency: "₹",
-    trading_style: "Price Action & Swing",
+    trading_style: "Strategy & Breakout",
     primary_market: "Equities & Futures",
-    account_capital: 150000,
+    account_capital: 0,
     created_at: "2026-01-01 09:15:00"
   }
 ];
@@ -39,7 +39,10 @@ function getLocalUsers(): UserProfile[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const hasRakesh = parsed.some(u => u.username === "rakesh" || u.id === "rakesh");
+        if (hasRakesh) return parsed;
+      }
     } catch {}
   }
   saveLocalUsers(DEFAULT_USERS);
